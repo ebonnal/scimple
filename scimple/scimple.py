@@ -8,16 +8,16 @@ from random import randint
 warnings.filterwarnings("ignore")
 
 
-def randomColor(racinecubiquesup,pas):
-    R=hex(randint(0,racinecubiquesup-1)*pas)[2:]
+def randomColor(racinecubiquesup, pas):
+    R=hex(randint(0, racinecubiquesup-1)*pas)[2:]
     if len(R)==1:
         R="0"+R
-    G=hex(randint(0,racinecubiquesup-1)*pas)[2:]
+    G=hex(randint(0, racinecubiquesup-1)*pas)[2:]
     if len(G)==1:
         G="0"+G
-    B=hex(randint(0,racinecubiquesup-1)*pas)[2:]
-    if len(B)==1:
-        B="0"+B
+    B=hex(randint(0, racinecubiquesup-1)*pas)[2:]
+    if len(B) == 1:
+        B = "0"+B
     while R==B and R==G:
         print(3)
 
@@ -36,11 +36,12 @@ class CreatePlot:
         self.__atLeastOneLabelDefined=False
         plt.rcParams['lines.color'] = 'b'
         if dim==2:
-            plt.title(title)
+            self.__fig, self.__ax = plt.subplots()
+            self.__ax.set_title(title)
             if type(borders)==list:
                 if len(borders)==4:
-                    plt.xlim(borders[0],borders[1])
-                    plt.ylim(borders[2],borders[3])      
+                    self.__ax.set_xlim(borders[0],borders[1])
+                    self.__ax.set_ylim(borders[2],borders[3])
                 else:
                     print("length of borders list for 2D plot must be 4")
                     raise Exception()
@@ -94,7 +95,7 @@ class CreatePlot:
 
             if self.__atLeastOneLabelDefined:
                 plt.legend(loc='upper right', shadow=True).draggable() 
-            plt.show()
+
           
         else:
             print(coloredBy)
@@ -204,10 +205,10 @@ class CreatePlot:
                 print(coloredBy)
                 print("color argument must be function int,List->string ,or string, or int")
                 raise Exception()
-                
             if self.__atLeastOneLabelDefined:
-                    self.__ax.legend(loc='upper right', shadow=True).draggable()    
-
+                    self.__ax.legend(loc='upper right', shadow=True).draggable()
+def show():
+   plt.show()
 class ImportTable:
     def __init__(self,path,firstLine=1,lastLine=None,columnNames=None\
     ,delimiter=r'(\t|[ ])+',newLine=r'(\t| )*((\r\n)|\n)',floatDot='.',numberFormatCharacter='',ignore="",\
