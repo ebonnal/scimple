@@ -3,9 +3,9 @@ from scimple import scimple
 #example :
 
 
-molecTable=scimple.ImportTable("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz",firstLine=3,lastLine=103)
-grapheneTable=scimple.ImportTable("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz",firstLine=104,lastLine=495)
-chargesGraphene=scimple.ImportTable("CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel",firstLine=104,lastLine=495)
+molecTable=scimple.ImportTable("data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz",firstLine=3,lastLine=103)
+grapheneTable=scimple.ImportTable("data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz",firstLine=104,lastLine=495)
+chargesGraphene=scimple.ImportTable("data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel",firstLine=104,lastLine=495)
 print(molecTable.getTable())
 
 
@@ -35,7 +35,7 @@ myPlot2D.addToPlot(grapheneTable, xColNum=2,yColNum=4,label="graphene X/Z",plotT
 #perso :
 #deux surfaces :
 
-myTable=scimple.ImportTable("ek_InTP_CO2_Me_4_graphene_W_r2_k.dat",firstLine=1)
+myTable=scimple.ImportTable("data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat",firstLine=1)
  
 myPlot3Dter=scimple.CreatePlot(dim=3,xlabel="X",ylabel="Y",zlabel="Z",title="deux surfaces, point de weyl ?")
 myPlot3Dter.addToPlot(myTable,xColNum=0,yColNum=1,zColNum=4,label="column 4",coloredBy="#000000")
