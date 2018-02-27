@@ -5,6 +5,7 @@ import numpy as np
 import scipy.interpolate as interp
 import warnings
 from random import randint
+import lex
 
 warnings.filterwarnings("ignore")
 
@@ -248,6 +249,15 @@ class Table:
             print("SCIMPLE ERROR : le chemin " + path + " est introuvable :(" + \
                   "I/O error({0}): {1}".format(e.errno, e.strerror))
 
+    def __str__(self):
+        return str(self.getTable())
+
+    def __unicode__(self):
+        return str(self.getTable())
+
+    def __repr__(self):
+        return str(self.getTable())
+
     def __parse(self):
         # List of token names.
         tokens = (
@@ -341,10 +351,52 @@ class Table:
         return self.__contentAsString
 
 
-if __name__ == '__main__':
-    import ply.lex as lex
+def run_example():
+    # example :
+    moleculeTable = Table("src/scimple/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz", firstLine=3, lastLine=103)
+    grapheneTable = Table("src/scimple/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz", firstLine=104, lastLine=495)
+    chargesGraphene = Table("src/scimple/data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel", firstLine=104, lastLine=495)
+    print(moleculeTable)
 
-    mydata = Table("test.txt")
+    # 3D delta et molec
+
+    myPlot3D = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", borders=[-40, 40, -40, 40, 15, 30],
+                                  title="Test Graphe #3D delta et molec")
+    myPlot3D.add(moleculeTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, coloredBy=1)
+    myPlot3D.add(grapheneTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, label="graphene",
+                       coloredBy=lambda lineNum, line: (sum(chargesGraphene.getTable()[lineNum][1:]) - 4))
+    """EN TESTS :
+    #3D molec avec couleurs standards
+    dicoCouleursStandards={'C':"#000000",'H':"#ffffff",'O':'r','N':'b','Fe':"#00ffff"}
+    myPlot3D=Plot(dim=3,xlabel="X",ylabel="Y",zlabel="Z",borders=[-40,40,-40,40,15,30],title="Test Graphe #3D molec avec couleurs standards")
+    myPlot3D.add(molecTable,xColNum=2,yColNum=3,zColNum=4,coloredBy=lambda lineNum,line:dicoCouleursStandards[line[1]])
+    """
+    # 3D comparatif z et delta:
+
+    myPlot3Dbis = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", borders=[-40, 40, -40, 40, 15, 30],
+                                     title="Test Graphe #3D comparatif z et delta:")
+    myPlot3Dbis.add([grapheneTable.getTable()[i][:4] + [grapheneTable.getTable()[i][4] + 10] for i in
+                           range(len(grapheneTable.getTable()) - 1)], xColNum=2, yColNum=3, zColNum=4, label="colored by z",
+                          coloredBy=lambda lineNum, line: line[4])
+    myPlot3Dbis.add(grapheneTable, xColNum=2, yColNum=3, zColNum=4, label="colored by delta",
+                          coloredBy=lambda lineNum, line: (sum(chargesGraphene.getTable()[lineNum][1:]) - 4))
+
+    # 2D:
+
+    myPlot2D = Plot(dim=2, xlabel="X", zlabel="Z", borders=[-20, 20, 18, 19], title="Test Graphe 2D")
+    myPlot2D.add(grapheneTable, xColNum=3, yColNum=4, label="graphene Y/Z", coloredBy="#f4a28c", markersize=20)
+    myPlot2D.add(grapheneTable, xColNum=2, yColNum=4, label="graphene X/Z", plotType='-')
+
+    # 3D plot 2 surfaces:
+
+    myTable = Table("src/scimple/data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat", firstLine=1)
+
+    myPlot3Dter = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", title="deux surfaces, point de weyl ?")
+    myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=4, label="column 4", coloredBy="#000000")
+    myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=5, label="column 5")
+    showAndBlock()
+if __name__ == '__main__':
+
+    run_example()
     # mydata=Table(firstLine=1,lastLine=10,delimiter=r"\n",newLine="jhiotioh",ignore=" \t")
-else:
-    from .ply import lex
+
