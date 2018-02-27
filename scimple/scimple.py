@@ -20,7 +20,6 @@ def randomColor(racinecubiquesup, pas):
     if len(B) == 1:
         B = "0" + B
     while R == B and R == G:
-        print(3)
 
         R = hex(randint(0, racinecubiquesup - 1) * pas)[2:]
         if len(R) == 1:
@@ -34,7 +33,7 @@ def randomColor(racinecubiquesup, pas):
     return "#" + R + G + B
 
 
-class CreatePlot:
+class Plot:
     def __init__(self, dim=2, title="", borders=None, xlabel="", ylabel="", zlabel=""):
         self.__atLeastOneLabelDefined = False
         plt.rcParams['lines.color'] = 'b'
@@ -69,11 +68,11 @@ class CreatePlot:
         self.__dim = dim  # string
         self.__plotables = []
 
-    def addToPlot(self, tableOrImportedTable, xColNum, yColNum, zColNum=None, label="" \
+    def add(self, tableOrImportedTable, xColNum, yColNum, zColNum=None, label="" \
                   , color=None, coloredBy=None, plotType='o', markersize=9):
         if type(tableOrImportedTable) == list:
             table = tableOrImportedTable
-        elif type(tableOrImportedTable) == ImportTable:
+        elif type(tableOrImportedTable) == Table:
             table = tableOrImportedTable.getTable()
         else:
             print("SCIMPLE ERROR : table format not supported")
@@ -101,7 +100,6 @@ class CreatePlot:
 
 
         else:
-            print(coloredBy)
             if zColNum == None:
                 print("SCIMPLE ERROR : z column declaration required for 3D plot")
                 raise Exception()
@@ -116,7 +114,7 @@ class CreatePlot:
                         groupsDic[line[coloredBy]] = [line]
                 racinecubiquesup = 0
                 while racinecubiquesup ** 3 - racinecubiquesup <= len(groupsDic):
-                    print(1)
+
                     racinecubiquesup += 1
                 pas = 255 // (racinecubiquesup - 1)
                 listOfUsedColors = []
@@ -133,7 +131,7 @@ class CreatePlot:
                             Z.append(table[lineIndex][zColNum])
                     groupColor = randomColor(racinecubiquesup, pas)
                     while groupColor in listOfUsedColors:
-                        print(2)
+
 
                         groupColor = randomColor(racinecubiquesup, pas)
                     listOfUsedColors.append(groupColor)
@@ -146,8 +144,6 @@ class CreatePlot:
                 for i in range(len(table)):
                     try:
                         value = coloredBy(i, table[i])
-                        if value == -4:
-                            print(table[i])
                     except:
                         value = maxi
                     if maxi == None:
@@ -207,19 +203,22 @@ class CreatePlot:
                 else:
                     self.__ax.plot(X, Y, Z, plotType, label=label, markersize=markersize)
             else:
-                print(coloredBy)
+
                 print("color argument must be function int,List->string ,or string, or int")
                 raise Exception()
             if self.__atLeastOneLabelDefined:
                 self.__ax.legend(loc='upper right', shadow=True).draggable()
 
+
 def show():
     plt.show()
+
 
 def showAndBlock():
     plt.show(block=True)
 
-class ImportTable:
+
+class Table:
     def __init__(self, path, firstLine=1, lastLine=None, columnNames=None \
                  , delimiter=r'(\t|[ ])+', newLine=r'(\t| )*((\r\n)|\n)', floatDot='.', numberFormatCharacter='',
                  ignore="", \
@@ -345,7 +344,7 @@ class ImportTable:
 if __name__ == '__main__':
     import ply.lex as lex
 
-    mydata = ImportTable("test.txt")
-    # mydata=ImportTable(firstLine=1,lastLine=10,delimiter=r"\n",newLine="jhiotioh",ignore=" \t")
+    mydata = Table("test.txt")
+    # mydata=Table(firstLine=1,lastLine=10,delimiter=r"\n",newLine="jhiotioh",ignore=" \t")
 else:
     from .ply import lex
