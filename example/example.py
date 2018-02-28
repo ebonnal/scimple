@@ -4,9 +4,9 @@ import scimple as scm
 # example :
 
 
-molecTable = scm.Table("../scimple/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz", firstLine=3, lastLine=103)
-grapheneTable = scm.Table("../scimple/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz", firstLine=104, lastLine=495)
-chargesGraphene = scm.Table("../scimple/data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel", firstLine=104, lastLine=495)
+molecTable = scm.Table("../scimple/scimple_data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz", firstLine=3, lastLine=103)
+grapheneTable = scm.Table("../scimple/scimple_data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz", firstLine=104, lastLine=495)
+chargesGraphene = scm.Table("../scimple/scimple_data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel", firstLine=104, lastLine=495)
 print(molecTable.getTable())
 
 # 3D delta et molec
@@ -40,7 +40,7 @@ myPlot2D.add(grapheneTable, xColNum=2, yColNum=4, label="graphene X/Z", plotType
 
 # 3D plot 2 surfaces:
 
-myTable = scm.Table("../scimple/data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat", firstLine=1)
+myTable = scm.Table("../scimple/scimple_data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat", firstLine=1)
 
 myPlot3Dter = scm.Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", title="deux surfaces, point de weyl ?")
 myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=4, label="column 4", coloredBy="#000000")

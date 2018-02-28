@@ -2,19 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6737747e-e15e-4eb2-bb88-62c32edc0fa2" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" afterPath="" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/README.rst" afterPath="" />
-      <change beforePath="$PROJECT_DIR$/data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel" afterPath="" />
-      <change beforePath="$PROJECT_DIR$/data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat" afterPath="" />
-      <change beforePath="$PROJECT_DIR$/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz" afterPath="" />
-      <change beforePath="$PROJECT_DIR$/example.py" afterPath="" />
-      <change beforePath="$PROJECT_DIR$/scimple/data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel" afterPath="" />
-      <change beforePath="$PROJECT_DIR$/scimple/data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat" afterPath="" />
-      <change beforePath="$PROJECT_DIR$/scimple/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/example/example.py" afterPath="$PROJECT_DIR$/example/example.py" />
       <change beforePath="$PROJECT_DIR$/scimple/scimple.py" afterPath="$PROJECT_DIR$/scimple/scimple.py" />
       <change beforePath="$PROJECT_DIR$/scimple/setup.py" afterPath="$PROJECT_DIR$/scimple/setup.py" />
-      <change beforePath="$PROJECT_DIR$/setup.py" afterPath="" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -28,8 +18,8 @@
       <file leaf-file-name="scimple.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scimple/scimple.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="328">
-              <caret line="363" column="35" lean-forward="true" selection-start-line="363" selection-start-column="35" selection-end-line="363" selection-end-column="35" />
+            <state relative-caret-position="72">
+              <caret line="436" column="0" lean-forward="true" selection-start-line="436" selection-start-column="0" selection-end-line="436" selection-end-column="0" />
               <folding>
                 <element signature="e#0#38#0" expanded="true" />
               </folding>
@@ -40,8 +30,8 @@
       <file leaf-file-name="example.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/example/example.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="140">
-              <caret line="40" column="21" lean-forward="false" selection-start-line="40" selection-start-column="21" selection-end-line="40" selection-end-column="21" />
+            <state relative-caret-position="501">
+              <caret line="39" column="0" lean-forward="false" selection-start-line="39" selection-start-column="0" selection-end-line="39" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -72,6 +62,7 @@
       <find>scimple.</find>
       <find>print(</find>
       <find>run</find>
+      <find>data</find>
     </findStrings>
     <replaceStrings>
       <replace>==</replace>
@@ -79,6 +70,7 @@
       <replace>add</replace>
       <replace>Plot</replace>
       <replace>Table</replace>
+      <replace>scimple_dada</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -331,8 +323,8 @@
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33004925" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32840723" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.3004926" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.32840723" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3004926" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32840723" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
@@ -465,16 +457,16 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/example/example.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="140">
-          <caret line="40" column="21" lean-forward="false" selection-start-line="40" selection-start-column="21" selection-end-line="40" selection-end-column="21" />
+        <state relative-caret-position="501">
+          <caret line="39" column="0" lean-forward="false" selection-start-line="39" selection-start-column="0" selection-end-line="39" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/scimple/scimple.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="328">
-          <caret line="363" column="35" lean-forward="true" selection-start-line="363" selection-start-column="35" selection-end-line="363" selection-end-column="35" />
+        <state relative-caret-position="72">
+          <caret line="436" column="0" lean-forward="true" selection-start-line="436" selection-start-column="0" selection-end-line="436" selection-end-column="0" />
           <folding>
             <element signature="e#0#38#0" expanded="true" />
           </folding>
