@@ -3,9 +3,9 @@ from setuptools import setup
 setup(
     name='scimple',
     version='1',
-    packages=[],
-	py_modules=['scimple','lex'],
-	package_data={'': ['data']},
+    packages=['scimple_data'],
+	py_modules=['scimple'],
+	package_data={'scimple_data': ['*']},
     url='http://github.com/EnzoBnl/Scimple',
     license='',
     author='Enzo Bonnal',

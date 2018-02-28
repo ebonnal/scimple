@@ -2,10 +2,19 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6737747e-e15e-4eb2-bb88-62c32edc0fa2" name="Default" comment="">
-      <change beforePath="" afterPath="$PROJECT_DIR$/example.py" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" afterPath="" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change beforePath="$PROJECT_DIR$/sample.py" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/README.rst" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/example.py" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/scimple/data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/scimple/data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat" afterPath="" />
+      <change beforePath="$PROJECT_DIR$/scimple/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz" afterPath="" />
       <change beforePath="$PROJECT_DIR$/scimple/scimple.py" afterPath="$PROJECT_DIR$/scimple/scimple.py" />
+      <change beforePath="$PROJECT_DIR$/scimple/setup.py" afterPath="$PROJECT_DIR$/scimple/setup.py" />
+      <change beforePath="$PROJECT_DIR$/setup.py" afterPath="" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -16,11 +25,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="scimple.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="scimple.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scimple/scimple.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="31">
-              <caret line="242" column="26" lean-forward="false" selection-start-line="242" selection-start-column="26" selection-end-line="242" selection-end-column="26" />
+            <state relative-caret-position="328">
+              <caret line="363" column="35" lean-forward="true" selection-start-line="363" selection-start-column="35" selection-end-line="363" selection-end-column="35" />
               <folding>
                 <element signature="e#0#38#0" expanded="true" />
               </folding>
@@ -28,21 +37,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="setup.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/setup.py">
+      <file leaf-file-name="example.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/example/example.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="187">
-              <caret line="11" column="1" lean-forward="false" selection-start-line="11" selection-start-column="1" selection-end-line="11" selection-end-column="1" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="example.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/example.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="119">
-              <caret line="7" column="37" lean-forward="false" selection-start-line="7" selection-start-column="37" selection-end-line="7" selection-end-column="37" />
+            <state relative-caret-position="140">
+              <caret line="40" column="21" lean-forward="false" selection-start-line="40" selection-start-column="21" selection-end-line="40" selection-end-column="21" />
               <folding />
             </state>
           </provider>
@@ -72,6 +71,7 @@
       <find>ImportTable</find>
       <find>scimple.</find>
       <find>print(</find>
+      <find>run</find>
     </findStrings>
     <replaceStrings>
       <replace>==</replace>
@@ -91,6 +91,10 @@
         <option value="$PROJECT_DIR$/Untitled.ipynb" />
         <option value="$PROJECT_DIR$/sample.ipynb" />
         <option value="$PROJECT_DIR$/sample.py" />
+        <option value="$PROJECT_DIR$/setup.py" />
+        <option value="$PROJECT_DIR$/scimple/example.py" />
+        <option value="$PROJECT_DIR$/example.py" />
+        <option value="$PROJECT_DIR$/example/example.py" />
         <option value="$PROJECT_DIR$/scimple/scimple.py" />
       </list>
     </option>
@@ -143,16 +147,26 @@
               <item name="scimple1" type="b2602c69:ProjectViewProjectNode" />
               <item name="scimple1" type="462c0819:PsiDirectoryNode" />
             </path>
+            <path>
+              <item name="scimple1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="scimple1" type="462c0819:PsiDirectoryNode" />
+              <item name="example" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="scimple1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="scimple1" type="462c0819:PsiDirectoryNode" />
+              <item name="scimple" type="462c0819:PsiDirectoryNode" />
+            </path>
           </expand>
           <select />
         </subPane>
       </pane>
-      <pane id="Scratches" />
       <pane id="Scope" />
+      <pane id="Scratches" />
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../../Orange/Alexis/Wrapper" />
+    <property name="last_opened_file_path" value="C:/Applications/Anaconda3/Lib/site-packages" />
     <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
@@ -168,7 +182,43 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.example">
+  <component name="RunManager" selected="Python.scimple">
+    <configuration name="example (1)" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/scimple" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="scimple1" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/scimple/example.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+    </configuration>
+    <configuration name="example (2)" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/example" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="scimple1" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/example/example.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+    </configuration>
     <configuration name="example" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -223,24 +273,6 @@
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
     </configuration>
-    <configuration name="testScimple1" type="PythonConfigurationType" factoryName="Python" temporary="true">
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <module name="scimple1" />
-      <option name="SCRIPT_NAME" value="C:\Prog\Python\scimpleLibraryProject\scimple1\example.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-    </configuration>
     <configuration name="scimple1" type="Python.Ipnb" factoryName="Jupyter Notebook">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -257,19 +289,21 @@
       <option name="ipnbHost" value="127.0.0.1" />
       <option name="ipnbPort" value="8888" />
     </configuration>
-    <list size="5">
-      <item index="0" class="java.lang.String" itemvalue="Python.testScimple1" />
+    <list size="6">
+      <item index="0" class="java.lang.String" itemvalue="Jupyter Notebook.scimple1" />
       <item index="1" class="java.lang.String" itemvalue="Python.scimple" />
       <item index="2" class="java.lang.String" itemvalue="Python.sample" />
-      <item index="3" class="java.lang.String" itemvalue="Jupyter Notebook.scimple1" />
-      <item index="4" class="java.lang.String" itemvalue="Python.example" />
+      <item index="3" class="java.lang.String" itemvalue="Python.example" />
+      <item index="4" class="java.lang.String" itemvalue="Python.example (1)" />
+      <item index="5" class="java.lang.String" itemvalue="Python.example (2)" />
     </list>
     <recent_temporary>
-      <list size="4">
-        <item index="0" class="java.lang.String" itemvalue="Python.example" />
-        <item index="1" class="java.lang.String" itemvalue="Python.sample" />
-        <item index="2" class="java.lang.String" itemvalue="Python.testScimple1" />
-        <item index="3" class="java.lang.String" itemvalue="Python.scimple" />
+      <list size="5">
+        <item index="0" class="java.lang.String" itemvalue="Python.scimple" />
+        <item index="1" class="java.lang.String" itemvalue="Python.example (2)" />
+        <item index="2" class="java.lang.String" itemvalue="Python.example" />
+        <item index="3" class="java.lang.String" itemvalue="Python.example (1)" />
+        <item index="4" class="java.lang.String" itemvalue="Python.sample" />
       </list>
     </recent_temporary>
   </component>
@@ -293,10 +327,9 @@
     <frame x="-8" y="-8" width="1382" height="744" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.10119048" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.18005952" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33004925" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32840723" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.3004926" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
@@ -309,6 +342,7 @@
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
@@ -320,6 +354,24 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
+    <entry file="file://$PROJECT_DIR$/scimple/scimple.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="6290">
+          <caret line="377" column="43" lean-forward="false" selection-start-line="377" selection-start-column="43" selection-end-line="377" selection-end-column="43" />
+          <folding>
+            <element signature="e#0#38#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/example.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="119">
+          <caret line="7" column="20" lean-forward="false" selection-start-line="7" selection-start-column="20" selection-end-line="7" selection-end-column="20" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/example.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -338,21 +390,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/sample.ipynb">
-      <provider selected="true" editor-type-id="ipnb-editor">
-        <state>
-          <selected id="0" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py" />
+    <entry file="file://$PROJECT_DIR$/sample.ipynb" />
     <entry file="file://$PROJECT_DIR$/example.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -371,21 +410,8 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/sample.ipynb">
-      <provider selected="true" editor-type-id="ipnb-editor">
-        <state>
-          <selected id="1" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py" />
+    <entry file="file://$PROJECT_DIR$/sample.ipynb" />
     <entry file="file://$PROJECT_DIR$/example.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -404,13 +430,7 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/Downloads/scatter3d_demo.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="68">
-          <caret line="4" column="0" lean-forward="true" selection-start-line="4" selection-start-column="0" selection-end-line="4" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$USER_HOME$/Downloads/scatter3d_demo.py" />
     <entry file="file://$PROJECT_DIR$/example.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -429,51 +449,35 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$USER_HOME$/Downloads/scatter3d_demo.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="68">
-          <caret line="4" column="0" lean-forward="true" selection-start-line="4" selection-start-column="0" selection-end-line="4" selection-end-column="0" />
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$USER_HOME$/Downloads/scatter3d_demo.py" />
     <entry file="file://C:/My Program Files/Anaconda3/Lib/random.py" />
-    <entry file="file://$USER_HOME$/Downloads/scatter3d_demo.py">
+    <entry file="file://$USER_HOME$/Downloads/scatter3d_demo.py" />
+    <entry file="file://$PROJECT_DIR$/sample.ipynb" />
+    <entry file="file://$PROJECT_DIR$/setup.py" />
+    <entry file="file://$PROJECT_DIR$/scimple/example.py" />
+    <entry file="file://$PROJECT_DIR$/example.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="68">
-          <caret line="4" column="0" lean-forward="false" selection-start-line="4" selection-start-column="0" selection-end-line="4" selection-end-column="0" />
+        <state relative-caret-position="221">
+          <caret line="13" column="9" lean-forward="false" selection-start-line="13" selection-start-column="9" selection-end-line="13" selection-end-column="9" />
+          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/sample.ipynb">
-      <provider selected="true" editor-type-id="ipnb-editor">
-        <state>
-          <selected id="2" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/setup.py">
+    <entry file="file://$PROJECT_DIR$/example/example.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="187">
-          <caret line="11" column="1" lean-forward="false" selection-start-line="11" selection-start-column="1" selection-end-line="11" selection-end-column="1" />
+        <state relative-caret-position="140">
+          <caret line="40" column="21" lean-forward="false" selection-start-line="40" selection-start-column="21" selection-end-line="40" selection-end-column="21" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/scimple/scimple.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="31">
-          <caret line="242" column="26" lean-forward="false" selection-start-line="242" selection-start-column="26" selection-end-line="242" selection-end-column="26" />
+        <state relative-caret-position="328">
+          <caret line="363" column="35" lean-forward="true" selection-start-line="363" selection-start-column="35" selection-end-line="363" selection-end-column="35" />
           <folding>
             <element signature="e#0#38#0" expanded="true" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/example.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="119">
-          <caret line="7" column="37" lean-forward="false" selection-start-line="7" selection-start-column="37" selection-end-line="7" selection-end-column="37" />
-          <folding />
         </state>
       </provider>
     </entry>

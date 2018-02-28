@@ -6,6 +6,7 @@ import scipy.interpolate as interp
 import warnings
 from random import randint
 import lex
+import os
 
 warnings.filterwarnings("ignore")
 
@@ -351,11 +352,17 @@ class Table:
         return self.__contentAsString
 
 
+
 def run_example():
+    _ROOT = os.path.abspath(os.path.dirname(__file__))
+
+    def get_data(path):
+        return os.path.join(_ROOT, 'scimple_data', path)
+    print(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"))
     # example :
-    moleculeTable = Table("src/scimple/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz", firstLine=3, lastLine=103)
-    grapheneTable = Table("src/scimple/data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz", firstLine=104, lastLine=495)
-    chargesGraphene = Table("src/scimple/data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel", firstLine=104, lastLine=495)
+    moleculeTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=3, lastLine=103)
+    grapheneTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=104, lastLine=495)
+    chargesGraphene = Table(get_data("CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel"), firstLine=104, lastLine=495)
     print(moleculeTable)
 
     # 3D delta et molec
@@ -389,14 +396,13 @@ def run_example():
 
     # 3D plot 2 surfaces:
 
-    myTable = Table("src/scimple/data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat", firstLine=1)
+    myTable = Table(get_data("ek_InTP_CO2_Me_4_graphene_W_r2_k.dat"), firstLine=1)
 
     myPlot3Dter = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", title="deux surfaces, point de weyl ?")
     myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=4, label="column 4", coloredBy="#000000")
     myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=5, label="column 5")
     showAndBlock()
 if __name__ == '__main__':
-
     run_example()
     # mydata=Table(firstLine=1,lastLine=10,delimiter=r"\n",newLine="jhiotioh",ignore=" \t")
 
