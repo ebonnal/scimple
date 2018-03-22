@@ -40,8 +40,6 @@ import os
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # -----------------------------------------------------------------------------
 
-__version__    = '3.10'
-__tabversion__ = '3.10'
 
 import re
 import sys
@@ -60,6 +58,7 @@ except AttributeError:
 
 # This regular expression is used to match valid token names
 _is_identifier = re.compile(r'^[a-zA-Z0-9_]+$')
+
 
 # Exception thrown when invalid token encountered and no default error
 # handler is defined.
@@ -123,32 +122,32 @@ class NullLogger(object):
 
 class Lexer:
     def __init__(self):
-        self.lexre = None             # Master regular expression. This is a list of
-                                      # tuples (re, findex) where re is a compiled
-                                      # regular expression and findex is a list
-                                      # mapping regex group numbers to rules
-        self.lexretext = None         # Current regular expression strings
-        self.lexstatere = {}          # Dictionary mapping lexer states to master regexs
-        self.lexstateretext = {}      # Dictionary mapping lexer states to regex strings
-        self.lexstaterenames = {}     # Dictionary mapping lexer states to symbol names
-        self.lexstate = 'INITIAL'     # Current lexer state
-        self.lexstatestack = []       # Stack of lexer states
-        self.lexstateinfo = None      # State information
-        self.lexstateignore = {}      # Dictionary of ignored characters for each state
-        self.lexstateerrorf = {}      # Dictionary of error functions for each state
-        self.lexstateeoff = {}        # Dictionary of eof functions for each state
-        self.lexreflags = 0           # Optional re compile flags
-        self.lexdata = None           # Actual input data (as a string)
-        self.lexpos = 0               # Current position in input text
-        self.lexlen = 0               # Length of the input text
-        self.lexerrorf = None         # Error rule (if any)
-        self.lexeoff = None           # EOF rule (if any)
-        self.lextokens = None         # List of valid tokens
-        self.lexignore = ''           # Ignored characters
-        self.lexliterals = ''         # Literal characters that can be passed through
-        self.lexmodule = None         # Module
-        self.lineno = 1               # Current line number
-        self.lexoptimize = False      # Optimized mode
+        self.lexre = None  # Master regular expression. This is a list of
+        # tuples (re, findex) where re is a compiled
+        # regular expression and findex is a list
+        # mapping regex group numbers to rules
+        self.lexretext = None  # Current regular expression strings
+        self.lexstatere = {}  # Dictionary mapping lexer states to master regexs
+        self.lexstateretext = {}  # Dictionary mapping lexer states to regex strings
+        self.lexstaterenames = {}  # Dictionary mapping lexer states to symbol names
+        self.lexstate = 'INITIAL'  # Current lexer state
+        self.lexstatestack = []  # Stack of lexer states
+        self.lexstateinfo = None  # State information
+        self.lexstateignore = {}  # Dictionary of ignored characters for each state
+        self.lexstateerrorf = {}  # Dictionary of error functions for each state
+        self.lexstateeoff = {}  # Dictionary of eof functions for each state
+        self.lexreflags = 0  # Optional re compile flags
+        self.lexdata = None  # Actual input data (as a string)
+        self.lexpos = 0  # Current position in input text
+        self.lexlen = 0  # Length of the input text
+        self.lexerrorf = None  # Error rule (if any)
+        self.lexeoff = None  # EOF rule (if any)
+        self.lextokens = None  # List of valid tokens
+        self.lexignore = ''  # Ignored characters
+        self.lexliterals = ''  # Literal characters that can be passed through
+        self.lexmodule = None  # Module
+        self.lineno = 1  # Current line number
+        self.lexoptimize = False  # Optimized mode
 
     def clone(self, object=None):
         c = copy.copy(self)
@@ -186,7 +185,8 @@ class Lexer:
         basetabmodule = lextab.split('.')[-1]
         filename = os.path.join(outputdir, basetabmodule) + '.py'
         with open(filename, 'w') as tf:
-            tf.write('# %s.py. This file automatically created by PLY (version %s). Don\'t edit!\n' % (basetabmodule, __version__))
+            tf.write('# %s.py. This file automatically created by PLY (version %s). Don\'t edit!\n' % (
+            basetabmodule, __version__))
             tf.write('_tabversion   = %s\n' % repr(__tabversion__))
             tf.write('_lextokens    = set(%s)\n' % repr(tuple(self.lextokens)))
             tf.write('_lexreflags   = %s\n' % repr(self.lexreflags))
@@ -197,7 +197,8 @@ class Lexer:
             tabre = {}
             for statename, lre in self.lexstatere.items():
                 titem = []
-                for (pat, func), retext, renames in zip(lre, self.lexstateretext[statename], self.lexstaterenames[statename]):
+                for (pat, func), retext, renames in zip(lre, self.lexstateretext[statename],
+                                                        self.lexstaterenames[statename]):
                     titem.append((retext, _funcs_to_names(func, renames)))
                 tabre[statename] = titem
 
@@ -227,13 +228,13 @@ class Lexer:
         if getattr(lextab, '_tabversion', '0.0') != __tabversion__:
             raise ImportError('Inconsistent PLY version')
 
-        self.lextokens      = lextab._lextokens
-        self.lexreflags     = lextab._lexreflags
-        self.lexliterals    = lextab._lexliterals
-        self.lextokens_all  = self.lextokens | set(self.lexliterals)
-        self.lexstateinfo   = lextab._lexstateinfo
+        self.lextokens = lextab._lextokens
+        self.lexreflags = lextab._lexreflags
+        self.lexliterals = lextab._lexliterals
+        self.lextokens_all = self.lextokens | set(self.lexliterals)
+        self.lexstateinfo = lextab._lexstateinfo
         self.lexstateignore = lextab._lexstateignore
-        self.lexstatere     = {}
+        self.lexstatere = {}
         self.lexstateretext = {}
         for statename, lre in lextab._lexstatere.items():
             titem = []
@@ -313,10 +314,10 @@ class Lexer:
     # ------------------------------------------------------------
     def token(self):
         # Make local copies of frequently referenced attributes
-        lexpos    = self.lexpos
-        lexlen    = self.lexlen
+        lexpos = self.lexpos
+        lexlen = self.lexlen
         lexignore = self.lexignore
-        lexdata   = self.lexdata
+        lexdata = self.lexdata
 
         while lexpos < lexlen:
             # This code provides some short-circuit code for whitespace, tabs, and other ignored characters
@@ -352,7 +353,7 @@ class Lexer:
 
                 # If token is processed by a function, call it
 
-                tok.lexer = self      # Set additional attributes useful in token rules
+                tok.lexer = self  # Set additional attributes useful in token rules
                 self.lexmatch = m
                 self.lexpos = lexpos
 
@@ -360,8 +361,8 @@ class Lexer:
 
                 # Every function must return a token, if nothing, we just move to next token
                 if not newtok:
-                    lexpos    = self.lexpos         # This is here in case user has updated lexpos.
-                    lexignore = self.lexignore      # This is here in case there was a state change
+                    lexpos = self.lexpos  # This is here in case user has updated lexpos.
+                    lexignore = self.lexignore  # This is here in case there was a state change
                     break
 
                 # Verify type of the token.  If not in the token map, raise an error
@@ -432,6 +433,7 @@ class Lexer:
 
     __next__ = next
 
+
 # -----------------------------------------------------------------------------
 #                           ==== Lex Builder ===
 #
@@ -448,6 +450,7 @@ class Lexer:
 def _get_regex(func):
     return getattr(func, 'regex', func.__doc__)
 
+
 # -----------------------------------------------------------------------------
 # get_caller_module_dict()
 #
@@ -461,6 +464,7 @@ def get_caller_module_dict(levels):
     if f.f_globals != f.f_locals:
         ldict.update(f.f_locals)
     return ldict
+
 
 # -----------------------------------------------------------------------------
 # _funcs_to_names()
@@ -477,6 +481,7 @@ def _funcs_to_names(funclist, namelist):
             result.append(f)
     return result
 
+
 # -----------------------------------------------------------------------------
 # _names_to_funcs()
 #
@@ -491,6 +496,7 @@ def _names_to_funcs(namelist, fdict):
         else:
             result.append(n)
     return result
+
 
 # -----------------------------------------------------------------------------
 # _form_master_re()
@@ -524,12 +530,13 @@ def _form_master_re(relist, reflags, ldict, toknames):
 
         return [(lexre, lexindexfunc)], [regex], [lexindexnames]
     except Exception:
-        m = int(len(relist)/2)
+        m = int(len(relist) / 2)
         if m == 0:
             m = 1
         llist, lre, lnames = _form_master_re(relist[:m], reflags, ldict, toknames)
         rlist, rre, rnames = _form_master_re(relist[m:], reflags, ldict, toknames)
-        return (llist+rlist), (lre+rre), (lnames+rnames)
+        return (llist + rlist), (lre + rre), (lnames + rnames)
+
 
 # -----------------------------------------------------------------------------
 # def _statetoken(s,names)
@@ -545,7 +552,7 @@ def _statetoken(s, names):
     for i, part in enumerate(parts[1:], 1):
         if part not in names and part != 'ANY':
             break
-    
+
     if i > 1:
         states = tuple(parts[1:i])
     else:
@@ -566,14 +573,14 @@ def _statetoken(s, names):
 # -----------------------------------------------------------------------------
 class LexerReflect(object):
     def __init__(self, ldict, log=None, reflags=0):
-        self.ldict      = ldict
+        self.ldict = ldict
         self.error_func = None
-        self.tokens     = []
-        self.reflags    = reflags
-        self.stateinfo  = {'INITIAL': 'inclusive'}
-        self.modules    = set()
-        self.error      = False
-        self.log        = PlyLogger(sys.stderr) if log is None else log
+        self.tokens = []
+        self.reflags = reflags
+        self.stateinfo = {'INITIAL': 'inclusive'}
+        self.modules = set()
+        self.error = False
+        self.log = PlyLogger(sys.stderr) if log is None else log
 
     # Get all of the basic information
     def get_all(self):
@@ -648,7 +655,8 @@ class LexerReflect(object):
             else:
                 for s in self.states:
                     if not isinstance(s, tuple) or len(s) != 2:
-                        self.log.error("Invalid state specifier %s. Must be a tuple (statename,'exclusive|inclusive')", repr(s))
+                        self.log.error("Invalid state specifier %s. Must be a tuple (statename,'exclusive|inclusive')",
+                                       repr(s))
                         self.error = True
                         continue
                     name, statetype = s
@@ -673,12 +681,12 @@ class LexerReflect(object):
         tsymbols = [f for f in self.ldict if f[:2] == 't_']
 
         # Now build up a list of functions and a list of strings
-        self.toknames = {}        # Mapping of symbols to token names
-        self.funcsym  = {}        # Symbols defined as functions
-        self.strsym   = {}        # Symbols defined as strings
-        self.ignore   = {}        # Ignore strings by state
-        self.errorf   = {}        # Error functions by state
-        self.eoff     = {}        # EOF functions by state
+        self.toknames = {}  # Mapping of symbols to token names
+        self.funcsym = {}  # Symbols defined as functions
+        self.strsym = {}  # Symbols defined as strings
+        self.ignore = {}  # Ignore strings by state
+        self.errorf = {}  # Error functions by state
+        self.eoff = {}  # EOF functions by state
 
         for s in self.stateinfo:
             self.funcsym[s] = []
@@ -769,12 +777,14 @@ class LexerReflect(object):
                 try:
                     c = re.compile('(?P<%s>%s)' % (fname, _get_regex(f)), self.reflags)
                     if c.match(''):
-                        self.log.error("%s:%d: Regular expression for rule '%s' matches empty string", file, line, f.__name__)
+                        self.log.error("%s:%d: Regular expression for rule '%s' matches empty string", file, line,
+                                       f.__name__)
                         self.error = True
                 except re.error as e:
                     self.log.error("%s:%d: Invalid regular expression for rule '%s'. %s", file, line, f.__name__, e)
                     if '#' in _get_regex(f):
-                        self.log.error("%s:%d. Make sure '#' in rule '%s' is escaped with '\\#'", file, line, f.__name__)
+                        self.log.error("%s:%d. Make sure '#' in rule '%s' is escaped with '\\#'", file, line,
+                                       f.__name__)
                     self.error = True
 
             # Validate all rules defined by strings
@@ -860,9 +870,11 @@ class LexerReflect(object):
                     counthash[name] = linen
                 else:
                     filename = inspect.getsourcefile(module)
-                    self.log.error('%s:%d: Rule %s redefined. Previously defined on line %d', filename, linen, name, prev)
+                    self.log.error('%s:%d: Rule %s redefined. Previously defined on line %d', filename, linen, name,
+                                   prev)
                     self.error = True
             linen += 1
+
 
 # -----------------------------------------------------------------------------
 # lex(module)
@@ -871,14 +883,13 @@ class LexerReflect(object):
 # -----------------------------------------------------------------------------
 def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
         reflags=int(re.VERBOSE), nowarn=False, outputdir=None, debuglog=None, errorlog=None):
-
     if lextab is None:
         lextab = 'lextab'
 
     global lexer
 
     ldict = None
-    stateinfo  = {'INITIAL': 'inclusive'}
+    stateinfo = {'INITIAL': 'inclusive'}
     lexobj = Lexer()
     lexobj.lexoptimize = optimize
     global token, input
@@ -1055,6 +1066,7 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
 
     return lexobj
 
+
 # -----------------------------------------------------------------------------
 # runmain()
 #
@@ -1088,6 +1100,7 @@ def runmain(lexer=None, data=None):
             break
         sys.stdout.write('(%s,%r,%d,%d)\n' % (tok.type, tok.value, tok.lineno, tok.lexpos))
 
+
 # -----------------------------------------------------------------------------
 # @TOKEN(regex)
 #
@@ -1102,11 +1115,12 @@ def TOKEN(r):
         else:
             f.regex = r
         return f
+
     return set_regex
+
 
 # Alternative spelling of the TOKEN decorator
 Token = TOKEN
-
 
 warnings.filterwarnings("ignore")
 
@@ -1137,38 +1151,38 @@ def randomColor(racinecubiquesup, pas):
 
 class Plot:
     def __init__(self, dim=2, title="", borders=None, xlabel="", ylabel="", zlabel=""):
-        self.__atLeastOneLabelDefined = False
+        self._atLeastOneLabelDefined = False
         plt.rcParams['lines.color'] = 'b'
         if dim == 2:
-            self.__fig, self.__ax = plt.subplots()
-            self.__ax.set_title(title)
+            self._fig, self._ax = plt.subplots()
+            self._ax.set_title(title)
             if type(borders) == list:
                 if len(borders) == 4:
-                    self.__ax.set_xlim(borders[0], borders[1])
-                    self.__ax.set_ylim(borders[2], borders[3])
+                    self._ax.set_xlim(borders[0], borders[1])
+                    self._ax.set_ylim(borders[2], borders[3])
                 else:
                     print("length of borders list for 2D plot must be 4")
                     raise Exception()
         elif dim == 3:
-            self.__fig = plt.figure()
-            self.__ax = self.__fig.gca(projection='3d')
-            self.__ax.set_title(title)
-            self.__ax.set_xlabel(xlabel)
-            self.__ax.set_ylabel(ylabel)
-            self.__ax.set_zlabel(zlabel)
+            self._fig = plt.figure()
+            self._ax = self._fig.gca(projection='3d')
+            self._ax.set_title(title)
+            self._ax.set_xlabel(xlabel)
+            self._ax.set_ylabel(ylabel)
+            self._ax.set_zlabel(zlabel)
             if type(borders) == list:
                 if len(borders) == 6:
-                    self.__ax.set_xlim(borders[0], borders[1])
-                    self.__ax.set_ylim(borders[2], borders[3])
-                    self.__ax.set_zlim(borders[4], borders[5])
+                    self._ax.set_xlim(borders[0], borders[1])
+                    self._ax.set_ylim(borders[2], borders[3])
+                    self._ax.set_zlim(borders[4], borders[5])
                 else:
                     print("length of borders list for 3D plot must be 6")
                     raise Exception()
         else:
             print("SCIMPLE ERROR : in Plot(dim), dim must be 2 or 3")
             raise Exception()
-        self.__dim = dim  # string
-        self.__plotables = []
+        self._dim = dim  # string
+        self._plotables = []
 
     def add(self, tableOrImportedTable, xColNum, yColNum, zColNum=None, label="" \
             , color=None, coloredBy=None, plotType='o', markersize=9):
@@ -1179,12 +1193,12 @@ class Plot:
         else:
             print("SCIMPLE ERROR : table format not supported")
 
-        if self.__dim == 2:
+        if self._dim == 2:
             if zColNum != None:
-                print("SCIMPLE ERROR : z column declsaration for 2D plot forbidden")
+                print("SCIMPLE ERROR : z column declaration for 2D plot forbidden")
                 raise Exception()
             if label != "":
-                self.__atLeastOneLabelDefined = True
+                self._atLeastOneLabelDefined = True
             X, Y = [], []
             for lineIndex in range(0, len(table)):
                 if len(table[lineIndex]) > max(xColNum, yColNum) and \
@@ -1197,7 +1211,7 @@ class Plot:
             else:
                 plt.plot(X, Y, plotType, label=label, markersize=markersize)
 
-            if self.__atLeastOneLabelDefined:
+            if self._atLeastOneLabelDefined:
                 plt.legend(loc='upper right', shadow=True).draggable()
 
 
@@ -1206,7 +1220,7 @@ class Plot:
                 print("SCIMPLE ERROR : z column declaration required for 3D plot")
                 raise Exception()
             if type(coloredBy) == int:  # INT COLNUM
-                self.__atLeastOneLabelDefined = True
+                self._atLeastOneLabelDefined = True
                 # build groupsDico
                 groupsDic = {}
                 for line in table:
@@ -1234,7 +1248,7 @@ class Plot:
                     while groupColor in listOfUsedColors:
                         groupColor = randomColor(racinecubiquesup, pas)
                     listOfUsedColors.append(groupColor)
-                    self.__ax.plot(X, Y, Z, plotType, label=str(group), color=groupColor, markersize=markersize)
+                    self._ax.plot(X, Y, Z, plotType, label=str(group), color=groupColor, markersize=markersize)
             elif str(type(
                     coloredBy)) == "<class 'function'>":  # and type(coloredBy(1,table[0]))==int :#lineNum,lineList -> int indicateur
 
@@ -1254,7 +1268,7 @@ class Plot:
                     except:
                         pass
                 if label != "":
-                    self.__atLeastOneLabelDefined = True
+                    self._atLeastOneLabelDefined = True
                 colorDico = {}  # hexa -> plotable lines
                 for lineIndex in range(0, len(table)):
                     if len(table[lineIndex]) > max(xColNum, yColNum, zColNum) and \
@@ -1279,7 +1293,7 @@ class Plot:
 
                 legendOn = True
                 for colorGroup in colorDico:
-                    self.__ax.plot(colorDico[colorGroup][0], colorDico[colorGroup][1], \
+                    self._ax.plot(colorDico[colorGroup][0], colorDico[colorGroup][1], \
                                    colorDico[colorGroup][2], plotType, label=(label if legendOn else ""),
                                    color=colorGroup, markersize=markersize, solid_capstyle="round")
                     legendOn = False
@@ -1287,7 +1301,7 @@ class Plot:
 
             elif type(coloredBy) == str or coloredBy == None:  # simple color field provided or nothing
                 if label != "":
-                    self.__atLeastOneLabelDefined = True
+                    self._atLeastOneLabelDefined = True
                 X, Y, Z = [], [], []
                 for lineIndex in range(0, len(table)):
                     if len(table[lineIndex]) > max(xColNum, yColNum, zColNum) and \
@@ -1298,15 +1312,15 @@ class Plot:
                         Y.append(table[lineIndex][yColNum])
                         Z.append(table[lineIndex][zColNum])
                 if coloredBy != None:
-                    self.__ax.plot(X, Y, Z, plotType, label=label, color=coloredBy, markersize=markersize)
+                    self._ax.plot(X, Y, Z, plotType, label=label, color=coloredBy, markersize=markersize)
                 else:
-                    self.__ax.plot(X, Y, Z, plotType, label=label, markersize=markersize)
+                    self._ax.plot(X, Y, Z, plotType, label=label, markersize=markersize)
             else:
 
                 print("color argument must be function int,List->string ,or string, or int")
                 raise Exception()
-            if self.__atLeastOneLabelDefined:
-                self.__ax.legend(loc='upper right', shadow=True).draggable()
+            if self._atLeastOneLabelDefined:
+                self._ax.legend(loc='upper right', shadow=True).draggable()
 
 
 def show():
@@ -1323,26 +1337,29 @@ class Table:
                  ignore="", \
                  printTokens=False, printError=False):
         # dev args:
-        self.__printTokens = printTokens
-        self.__printError = printError
+        self._printTokens = printTokens
+        self._printError = printError
         # init fields
-        self.__path = path  # string
-        self.__firstLine = firstLine  # int
-        self.__lastLine = lastLine  # int
-        self.__columnNames = columnNames  # list
-        self.__contentAsString = None  # string
-        self.__floatTable = []  # string
-        self.__delimiter = delimiter  # regExp
-        self.__newLine = newLine  # regExp
-        self.__floatDot = (r'\.' if floatDot == '.' else floatDot)  # regExp
-        self.__numberFormatCharacter = numberFormatCharacter  # string
-        self.__ignore = ignore  # regExp
+        self._path = path  # string
+        self._firstLine = firstLine  # int
+        if(lastLine is not None and lastLine <=0):
+            print("SCIMPLE ERROR : lastLine Argument must be >=1")
+            raise Exception()
+        self._lastLine = lastLine  # int
+        self._columnNames = columnNames  # list
+        self._contentAsString = None  # string
+        self._floatTable = []  # string
+        self._delimiter = delimiter  # regExp
+        self._newLine = newLine  # regExp
+        self._floatDot = (r'\.' if floatDot == '.' else floatDot)  # regExp
+        self._numberFormatCharacter = numberFormatCharacter  # string
+        self._ignore = ignore  # regExp
         # import file
         try:
             inFile = open(path, 'r')
-            self.__contentAsString = inFile.read()
+            self._contentAsString = inFile.read()
             inFile.close()
-            self.__parse()
+            self._parse()
         except IOError as e:
             print("SCIMPLE ERROR : le chemin " + path + " est introuvable :(" + \
                   "I/O error({0}): {1}".format(e.errno, e.strerror))
@@ -1356,7 +1373,7 @@ class Table:
     def __repr__(self):
         return str(self.getTable())
 
-    def __parse(self):
+    def _parse(self):
         # List of token names.
         tokens = (
             'float',
@@ -1374,79 +1391,82 @@ class Table:
             t.lexer.lineno += 1
             return t
 
-        t_newLine.__doc__ = self.__newLine
+        t_newLine.__doc__ = self._newLine
 
         def t_delimiter(t):
             r''
             return t
 
-        t_delimiter.__doc__ = self.__delimiter
+        t_delimiter.__doc__ = self._delimiter
 
         def t_float(t):
             r''
-            t.value = t.value.replace(self.__numberFormatCharacter, '')
-            if self.__floatDot != '\.':
-                t.value = t.value.replace(self.__floatDot, '.')
+            t.value = t.value.replace(self._numberFormatCharacter, '')
+            if self._floatDot != '\.':
+                t.value = t.value.replace(self._floatDot, '.')
             try:
                 t.value = float(t.value)
                 return t
             except:
                 t.lexer.skip(1)
 
-        t_float.__doc__ = r'(-|[0-9])+(' + self.__floatDot + '[0-9]*)?'
+        t_float.__doc__ = r'(-|[0-9])+(' + self._floatDot + '[0-9]*)?'
         t_string = r'([a-z]|[A-Z]|_)([a-z]|[A-Z]|_|-|[0-9])*'
-        t_ignore = self.__ignore
+        t_ignore = self._ignore
 
         def t_eof(t):
-            self.__lastLine = -1
-            t.type = 'newLine'
+            self._lastLine = -1
             return t
 
         # en cas d'ERROR :
         def t_error(t):
-            if self.__printError:
+            if self._printError:
                 print("Error on char : '%s'" % t.value[0])  # dev
             t.lexer.skip(1)
 
         # Build du lexer
         lexer = lex()
         # On donne l'input au lexer
-        lexer.input(self.__contentAsString)
+        lexer.input(self._contentAsString)
         # On build la string résultat :
         tok = lexer.token()
-        if self.__printTokens:
+        if self._printTokens:
             print(tok)
         currentLine = list()
         currentFloat = None
         while tok:
-            if tok.lineno >= self.__firstLine and (self.__lastLine == None or tok.lineno <= self.__lastLine):
+            if tok.lineno >= self._firstLine and (self._lastLine == None or tok.lineno <= self._lastLine):
                 if tok.type == "newLine":
                     currentLine.append(currentFloat)
                     currentFloat = None
 
-                    self.__floatTable.append(currentLine)
+                    self._floatTable.append(currentLine)
                     currentLine = []
                 elif tok.type == "float" or tok.type == "string":
                     currentFloat = tok.value
                 elif tok.type == "delimiter":
                     currentLine.append(currentFloat)
                     currentFloat = None
-            elif self.__lastLine != None and tok.lineno > self.__lastLine:
+            elif self._lastLine != None and tok.lineno > self._lastLine:
                 break
             tok = lexer.token()
-            if self.__printTokens:
+            if self._printTokens:
                 print(tok)
-        if not (tok):
+            print(tok)
+            print(currentLine)
+        print(tok)
+
+        if self._lastLine==-1:
             currentLine.append(currentFloat)
-            self.__floatTable.append(currentLine)
+            self._floatTable.append(currentLine)
 
     # public :
     def getTable(self):
         """returns the table (list of list) of floats with None for empty fields"""
-        return self.__floatTable
+        return self._floatTable
 
     def getString(self):
-        return self.__contentAsString
+        return self._contentAsString
 
 
 def run_example():
@@ -1458,9 +1478,9 @@ def run_example():
 
     source = """
     # example :
-    moleculeTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=3, lastLine=103)
-    grapheneTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=104, lastLine=495)
-    chargesGraphene = Table(get_data("CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel"), firstLine=104, lastLine=495)
+    moleculeTable = Table("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz" firstLine=3, lastLine=103)
+    grapheneTable = Table("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz" firstLine=104, lastLine=495)
+    chargesGraphene = Table("CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel" firstLine=104, lastLine=495)
     #print(moleculeTable)
 
     # 3D delta et molec
@@ -1489,7 +1509,7 @@ def run_example():
 
     # 3D plot 2 surfaces:
 
-    myTable = Table(get_data("ek_InTP_CO2_Me_4_graphene_W_r2_k.dat"), firstLine=1)
+    myTable = Table("ek_InTP_CO2_Me_4_graphene_W_r2_k.dat" firstLine=1)
 
     myPlot3Dter = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", title="deux surfaces, point de weyl ?")
     myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=4, label="column 4", coloredBy="#000000")
@@ -1542,5 +1562,6 @@ def run_example():
 
 
 if __name__ == '__main__':
-    run_example()
+    # run_example()
+    print(Table("test.txt", delimiter=" ;").getTable())
     # mydata=Table(firstLine=1,lastLine=10,delimiter=r"\n",newLine="jhiotioh",ignore=" \t")
