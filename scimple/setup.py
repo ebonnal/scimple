@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='scimple',
-    version='1.2',
+    version='1.4',
     packages=['scimple_data'],
 	py_modules=['scimple'],
 	package_data={'scimple_data': ['*']},

@@ -1452,9 +1452,7 @@ class Table:
             tok = lexer.token()
             if self._printTokens:
                 print(tok)
-            print(tok)
-            print(currentLine)
-        print(tok)
+
 
         if self._lastLine==-1:
             currentLine.append(currentFloat)
