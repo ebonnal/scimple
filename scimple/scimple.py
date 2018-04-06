@@ -2,7 +2,6 @@ from __future__ import absolute_import
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
-import scipy.interpolate as interp
 import warnings
 from random import randint
 import os
@@ -1560,6 +1559,6 @@ def run_example():
 
 
 if __name__ == '__main__':
-    # run_example()
+    run_example()
     print(Table("test.txt", delimiter=" ;").getTable())
     # mydata=Table(firstLine=1,lastLine=10,delimiter=r"\n",newLine="jhiotioh",ignore=" \t")
