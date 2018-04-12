@@ -1,11 +1,16 @@
 from __future__ import absolute_import
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
+
+import copy
+import inspect
+import os
+import re
+import sys
+import types
 import warnings
 from random import randint
-import os
-
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+a=Axes3D
 # -----------------------------------------------------------------------------
 # ply: py
 #
@@ -39,14 +44,6 @@ import os
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # -----------------------------------------------------------------------------
 
-
-import re
-import sys
-import types
-import copy
-import os
-import inspect
-
 # This tuple contains known string types
 try:
     # Python 2.6
@@ -74,6 +71,9 @@ class LexToken(object):
 
     def __repr__(self):
         return str(self)
+
+    def __bool__(self):
+        return False if self.type == 'eof' else True
 
 
 # This object is a stand-in for a logging object created by the
@@ -185,7 +185,7 @@ class Lexer:
         filename = os.path.join(outputdir, basetabmodule) + '.py'
         with open(filename, 'w') as tf:
             tf.write('# %s.py. This file automatically created by PLY (version %s). Don\'t edit!\n' % (
-            basetabmodule, __version__))
+                basetabmodule, __version__))
             tf.write('_tabversion   = %s\n' % repr(__tabversion__))
             tf.write('_lextokens    = set(%s)\n' % repr(tuple(self.lextokens)))
             tf.write('_lexreflags   = %s\n' % repr(self.lexreflags))
@@ -1183,15 +1183,8 @@ class Plot:
         self._dim = dim  # string
         self._plotables = []
 
-    def add(self, tableOrImportedTable, xColNum, yColNum, zColNum=None, label="" \
+    def add(self, table, xColNum, yColNum, zColNum=None, label="" \
             , color=None, coloredBy=None, plotType='o', markersize=9):
-        if type(tableOrImportedTable) == list:
-            table = tableOrImportedTable
-        elif type(tableOrImportedTable) == Table:
-            table = tableOrImportedTable.getTable()
-        else:
-            print("SCIMPLE ERROR : table format not supported")
-
         if self._dim == 2:
             if zColNum != None:
                 print("SCIMPLE ERROR : z column declaration for 2D plot forbidden")
@@ -1200,9 +1193,7 @@ class Plot:
                 self._atLeastOneLabelDefined = True
             X, Y = [], []
             for lineIndex in range(0, len(table)):
-                if len(table[lineIndex]) > max(xColNum, yColNum) and \
-                        table[lineIndex][xColNum] != None and \
-                        table[lineIndex][yColNum] != None:
+                if len(table[lineIndex]) > max(xColNum, yColNum):
                     X.append(table[lineIndex][xColNum])
                     Y.append(table[lineIndex][yColNum])
             if coloredBy != None:
@@ -1213,9 +1204,8 @@ class Plot:
             if self._atLeastOneLabelDefined:
                 plt.legend(loc='upper right', shadow=True).draggable()
 
-
         else:
-            if zColNum == None:
+            if zColNum is None:
                 print("SCIMPLE ERROR : z column declaration required for 3D plot")
                 raise Exception()
             if type(coloredBy) == int:  # INT COLNUM
@@ -1236,10 +1226,7 @@ class Plot:
                     table = groupsDic[group]
                     X, Y, Z = [], [], []
                     for lineIndex in range(0, len(table)):
-                        if len(table[lineIndex]) > max(xColNum, yColNum, zColNum) and \
-                                table[lineIndex][xColNum] != None and \
-                                table[lineIndex][yColNum] != None and \
-                                table[lineIndex][zColNum] != None:
+                        if len(table[lineIndex]) > max(xColNum, yColNum, zColNum):
                             X.append(table[lineIndex][xColNum])
                             Y.append(table[lineIndex][yColNum])
                             Z.append(table[lineIndex][zColNum])
@@ -1256,24 +1243,22 @@ class Plot:
                 for i in range(len(table)):
                     try:
                         value = coloredBy(i, table[i])
-                    except:
+                    except Exception:
                         value = maxi
-                    if maxi == None:
+                    if maxi is None:
                         maxi = value
                         mini = value
                     try:
                         maxi = max(maxi, value)
                         mini = min(mini, value)
                     except:
-                        pass
+                        print(454545)
+
                 if label != "":
                     self._atLeastOneLabelDefined = True
                 colorDico = {}  # hexa -> plotable lines
                 for lineIndex in range(0, len(table)):
-                    if len(table[lineIndex]) > max(xColNum, yColNum, zColNum) and \
-                            table[lineIndex][xColNum] != None and \
-                            table[lineIndex][yColNum] != None and \
-                            table[lineIndex][zColNum] != None:
+                    if len(table[lineIndex]) > max(xColNum, yColNum, zColNum):
                         colorRes = coloredBy(lineIndex, table[lineIndex])
                         deux = colorRes - mini
                         maxolo = max(0, deux)
@@ -1293,8 +1278,8 @@ class Plot:
                 legendOn = True
                 for colorGroup in colorDico:
                     self._ax.plot(colorDico[colorGroup][0], colorDico[colorGroup][1], \
-                                   colorDico[colorGroup][2], plotType, label=(label if legendOn else ""),
-                                   color=colorGroup, markersize=markersize, solid_capstyle="round")
+                                  colorDico[colorGroup][2], plotType, label=(label if legendOn else ""),
+                                  color=colorGroup, markersize=markersize, solid_capstyle="round")
                     legendOn = False
 
 
@@ -1303,10 +1288,7 @@ class Plot:
                     self._atLeastOneLabelDefined = True
                 X, Y, Z = [], [], []
                 for lineIndex in range(0, len(table)):
-                    if len(table[lineIndex]) > max(xColNum, yColNum, zColNum) and \
-                            table[lineIndex][xColNum] != None and \
-                            table[lineIndex][yColNum] != None and \
-                            table[lineIndex][zColNum] != None:
+                    if len(table[lineIndex]) > max(xColNum, yColNum, zColNum):
                         X.append(table[lineIndex][xColNum])
                         Y.append(table[lineIndex][yColNum])
                         Z.append(table[lineIndex][zColNum])
@@ -1341,7 +1323,7 @@ class Table:
         # init fields
         self._path = path  # string
         self._firstLine = firstLine  # int
-        if(lastLine is not None and lastLine <=0):
+        if (lastLine is not None and lastLine <= 0):
             print("SCIMPLE ERROR : lastLine Argument must be >=1")
             raise Exception()
         self._lastLine = lastLine  # int
@@ -1372,13 +1354,30 @@ class Table:
     def __repr__(self):
         return str(self.getTable())
 
+    def __iter__(self):
+        return iter(self.getTable())
+
+    def __bool__(self):
+        return bool(len(self.getTable()))
+
+    def __getitem__(self, t):
+        res = self.getTable()
+        if type(t) is int:
+            return res[t]
+        else:
+            for index in t:
+                res = res[index]
+            return res
+
+    def __len__(self):
+        return len(self.getTable())
+
     def _parse(self):
         # List of token names.
         tokens = (
-            'float',
             'delimiter',
             'newLine',
-            'string'
+            'char'
         )
         # variable :
         lineNumber = 0
@@ -1398,23 +1397,13 @@ class Table:
 
         t_delimiter.__doc__ = self._delimiter
 
-        def t_float(t):
-            r''
-            t.value = t.value.replace(self._numberFormatCharacter, '')
-            if self._floatDot != '\.':
-                t.value = t.value.replace(self._floatDot, '.')
-            try:
-                t.value = float(t.value)
-                return t
-            except:
-                t.lexer.skip(1)
+        def t_char(t):
+            r'.'
+            return t
 
-        t_float.__doc__ = r'(-|[0-9])+(' + self._floatDot + '[0-9]*)?'
-        t_string = r'([a-z]|[A-Z]|_)([a-z]|[A-Z]|_|-|[0-9])*'
         t_ignore = self._ignore
 
         def t_eof(t):
-            self._lastLine = -1
             return t
 
         # en cas d'ERROR :
@@ -1428,34 +1417,44 @@ class Table:
         # On donne l'input au lexer
         lexer.input(self._contentAsString)
         # On build la string résultat :
-        tok = lexer.token()
-        if self._printTokens:
-            print(tok)
         currentLine = list()
-        currentFloat = None
+        currentChars = ''
+        tok = lexer.token()
+        last_tok = None
         while tok:
-            if tok.lineno >= self._firstLine and (self._lastLine == None or tok.lineno <= self._lastLine):
+            if tok.lineno >= self._firstLine and (self._lastLine is None or tok.lineno <= self._lastLine):
                 if tok.type == "newLine":
-                    currentLine.append(currentFloat)
-                    currentFloat = None
-
+                    currentLine.append(self._try_to_float(currentChars))
+                    currentChars = ''
                     self._floatTable.append(currentLine)
                     currentLine = []
-                elif tok.type == "float" or tok.type == "string":
-                    currentFloat = tok.value
                 elif tok.type == "delimiter":
-                    currentLine.append(currentFloat)
-                    currentFloat = None
-            elif self._lastLine != None and tok.lineno > self._lastLine:
+                    currentLine.append(self._try_to_float(currentChars))
+                    currentChars = ''
+                else:
+                    currentChars += tok.value
+            elif not (self._lastLine is None or tok.lineno <= self._lastLine):
                 break
-            tok = lexer.token()
             if self._printTokens:
                 print(tok)
-
-
-        if self._lastLine==-1:
-            currentLine.append(currentFloat)
+            last_tok = tok
+            tok = lexer.token()
+        if not tok and (self._lastLine is None or tok.lineno <= self._lastLine):
+            currentLine.append(self._try_to_float(currentChars))
             self._floatTable.append(currentLine)
+
+    def _try_to_float(self, s):
+        try:
+            chars_copied = s
+            chars_copied = chars_copied.replace(self._numberFormatCharacter, '')
+            if self._floatDot != '\.':
+                chars_copied = chars_copied.replace(self._floatDot, '.')
+            chars_copied = float(chars_copied)
+            if chars_copied % 1 == 0:
+                chars_copied = int(chars_copied)
+            return chars_copied
+        except ValueError:
+            return s
 
     # public :
     def getTable(self):
@@ -1473,30 +1472,36 @@ def run_example():
     def get_data(path):
         return os.path.join(_ROOT, 'scimple_data', path)
 
-    source = """
+    source ="""print("Few Examples Of Scimple Plots :), are they well displayed ? \SOURCE :" + source)
     # example :
-    moleculeTable = Table("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz" firstLine=3, lastLine=103)
-    grapheneTable = Table("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz" firstLine=104, lastLine=495)
-    chargesGraphene = Table("CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel" firstLine=104, lastLine=495)
-    #print(moleculeTable)
+    moleculeTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=3, lastLine=103)
+    grapheneTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=104, lastLine=495)
+    chargesGraphene = Table(get_data("CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel"), firstLine=104, lastLine=495)
+
+    # print(moleculeTable)
 
     # 3D delta et molec
+    def f(lineNum, line):
+        # print(sum(chargesGraphene.getTable()[lineNum][1:]) - 4)
+        # print(line)
+        # print(chargesGraphene.getTable()[lineNum])
+        # print(2)
+        return sum(chargesGraphene.getTable()[lineNum][1:]) - 4
 
     myPlot3D = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", borders=[-40, 40, -40, 40, 15, 30],
-                                  title="Test Graphe #3D delta et molec")
+                    title="Test Graphe #3D delta et molec")
     myPlot3D.add(moleculeTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, coloredBy=1)
     myPlot3D.add(grapheneTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, label="graphene",
-                       coloredBy=lambda lineNum, line: (sum(chargesGraphene.getTable()[lineNum][1:]) - 4))
-    
+                 coloredBy=f)
     # 3D comparatif z et delta:
 
     myPlot3Dbis = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", borders=[-40, 40, -40, 40, 15, 30],
-                                     title="Test Graphe #3D comparatif z et delta:")
+                       title="Test Graphe #3D comparatif z et delta:")
     myPlot3Dbis.add([grapheneTable.getTable()[i][:4] + [grapheneTable.getTable()[i][4] + 10] for i in
-                           range(len(grapheneTable.getTable()) - 1)], xColNum=2, yColNum=3, zColNum=4, label="colored by z",
-                          coloredBy=lambda lineNum, line: line[4])
+                     range(len(grapheneTable.getTable()) - 1)], xColNum=2, yColNum=3, zColNum=4, label="colored by z",
+                    coloredBy=lambda lineNum, line: line[4])
     myPlot3Dbis.add(grapheneTable, xColNum=2, yColNum=3, zColNum=4, label="colored by delta",
-                          coloredBy=lambda lineNum, line: (sum(chargesGraphene.getTable()[lineNum][1:]) - 4))
+                    coloredBy=lambda lineNum, line: (sum(chargesGraphene.getTable()[lineNum][1:]) - 4))
 
     # 2D:
 
@@ -1506,8 +1511,7 @@ def run_example():
 
     # 3D plot 2 surfaces:
 
-    myTable = Table("ek_InTP_CO2_Me_4_graphene_W_r2_k.dat" firstLine=1)
-
+    myTable = Table(get_data("ek_InTP_CO2_Me_4_graphene_W_r2_k.dat"), firstLine=1)
     myPlot3Dter = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", title="deux surfaces, point de weyl ?")
     myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=4, label="column 4", coloredBy="#000000")
     myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=5, label="column 5")
@@ -1517,15 +1521,22 @@ def run_example():
     moleculeTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=3, lastLine=103)
     grapheneTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=104, lastLine=495)
     chargesGraphene = Table(get_data("CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel"), firstLine=104, lastLine=495)
+
     # print(moleculeTable)
 
     # 3D delta et molec
+    def f(lineNum, line):
+        # print(sum(chargesGraphene.getTable()[lineNum][1:]) - 4)
+        # print(line)
+        # print(chargesGraphene.getTable()[lineNum])
+        # print(2)
+        return sum(chargesGraphene.getTable()[lineNum][1:]) - 4
 
     myPlot3D = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", borders=[-40, 40, -40, 40, 15, 30],
                     title="Test Graphe #3D delta et molec")
     myPlot3D.add(moleculeTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, coloredBy=1)
     myPlot3D.add(grapheneTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, label="graphene",
-                 coloredBy=lambda lineNum, line: (sum(chargesGraphene.getTable()[lineNum][1:]) - 4))
+                 coloredBy=f)
     """EN TESTS :
     #3D molec avec couleurs standards
     dicoCouleursStandards={'C':"#000000",'H':"#ffffff",'O':'r','N':'b','Fe':"#00ffff"}
@@ -1551,7 +1562,6 @@ def run_example():
     # 3D plot 2 surfaces:
 
     myTable = Table(get_data("ek_InTP_CO2_Me_4_graphene_W_r2_k.dat"), firstLine=1)
-
     myPlot3Dter = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", title="deux surfaces, point de weyl ?")
     myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=4, label="column 4", coloredBy="#000000")
     myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=5, label="column 5")
@@ -1560,5 +1570,14 @@ def run_example():
 
 if __name__ == '__main__':
     run_example()
-    print(Table("test.txt", delimiter=" ;").getTable())
+    print(7, Table("test.txt", firstLine=4, lastLine=4)[0], Table("test.txt", firstLine=4, lastLine=4)[0, 1],
+          Table("test.txt", firstLine=4, lastLine=4)[0][1])
+
+    print(Table("test.txt", lastLine=4))
+
+    print(Table("test.txt", delimiter="[ ];", lastLine=5))
+
+    print(Table("test.txt"))
+
+
     # mydata=Table(firstLine=1,lastLine=10,delimiter=r"\n",newLine="jhiotioh",ignore=" \t")
