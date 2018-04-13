@@ -4,6 +4,7 @@ setup.py
 scimple.egg-info/PKG-INFO
 scimple.egg-info/SOURCES.txt
 scimple.egg-info/dependency_links.txt
+scimple.egg-info/requires.txt
 scimple.egg-info/top_level.txt
 scimple_data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel
 scimple_data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat
