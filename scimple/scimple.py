@@ -1415,6 +1415,7 @@ class Table:
 
     def append(self, elem):
         self.getTable().append(list(elem))
+        return self
 
     def pop(self, i=-1):
         popped = self[i]
@@ -1517,13 +1518,9 @@ class Table:
             self._newLine = '\n'
         self._newLine = self._newLine.replace("\\n","\n").replace("\\t","\t")
         self._delimiter = self._delimiter.replace("\\n","\n").replace("\\t","\t")
-        for i in range(len(self.getTable())):
-            for j in range(len(self.getTable()[i])):
-                self._contentAsString += str(self.getTable()[i][j])
-                if j != len(self.getTable()[i]) - 1:
-                    self._contentAsString += self._delimiter
-            if i != len(self.getTable()) - 1:
-                self._contentAsString += self._newLine
+
+        self._contentAsString = self._newLine.join([self._delimiter.join([str(elem) for elem in line]) for line in self])
+
         return self._contentAsString
 
     def getCopy(self):
@@ -1733,22 +1730,22 @@ if __name__ == '__main__':
     # run_example()
     tab = Table("test.txt", firstLine=3, lastLine=495)
 
-    print(tab.getMapping())
+    # print(tab.getMapping())
     # tab.map(lambda lineNum, line: (line[1], line[4])) \
     #     .map(lambda key, value: (key, value + 2)) \
     #     .reduce(lambda key, values_list: (key, sum(values_list) / len(values_list))) \
     #     .map(lambda key, value: (len(key),1)) \
     #     .reduce(lambda key, values_list: (key,sum(values_list)))
 
-    tab.map(lambda lineNum, line: (line[1],1)) \
-        .reduce(lambda key, values_list: [(key, sum(values_list))] if isinstance(key,str) else [], multi=True)
-    print(tab.getMapping())
-    print(tab.getMappingAsTable(True))
-    tab = Table(tab.getMappingAsTable(True), delimiter=';')
-    print(tab.getString())
-    tab.append({"fin de file"})
-    tab.save("out.txt")
-    tab2 = tab.getCopy()
-    print(tab.pop())
-    print(tab2, tab)
-    print(Table("14 41546 ej;\t zkozf 45 64   ",newLine=r'\t').getString(),Table("14 41546 ej;\n zkozf 45 64   ",newLine='\\n').getTable())
+    # tab.map(lambda lineNum, line: (line[1],1)) \
+    #     .reduce(lambda key, values_list: [(key, sum(values_list))] if isinstance(key,str) else [], multi=True)
+    # print(tab.getMapping())
+    # print(tab.getMappingAsTable(True))
+    # tab = Table(tab.getMappingAsTable(True), delimiter=';')
+    # print(tab.getString())
+    # tab.append({"fin de file"})
+    tab2 = Table(tab,delimiter = ';;').append(["test"]).save('out.txt')
+    # tab2 = tab.getCopy()
+    # print(tab.pop())
+    # print(tab2, tab)
+    # print(Table("14 41546 ej;\t zkozf 45 64   ",newLine=r'\t').getString(),Table("14 41546 ej;\n zkozf 45 64   ",newLine='\\n').getTable())
