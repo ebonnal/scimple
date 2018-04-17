@@ -1510,16 +1510,18 @@ class Table:
         """returns the table (list of list) of floats with None for empty fields"""
         return self._floatTable
 
-    def getString(self):
+    def getString(self, delimiter=None, newLine=None):
+        if delimiter == None:delimiter = self._delimiter
+        if newLine == None:newLine = self._newLine
         self._contentAsString = ""
-        if self._delimiter == r'(\t|[ ])+':
-            self._delimiter = ','
-        if self._newLine == r'(\t| )*((\r\n)|\n)':
-            self._newLine = '\n'
-        self._newLine = self._newLine.replace("\\n","\n").replace("\\t","\t")
-        self._delimiter = self._delimiter.replace("\\n","\n").replace("\\t","\t")
+        if delimiter == r'(\t|[ ])+':
+            delimiter = ','
+        if newLine == r'(\t| )*((\r\n)|\n)':
+            newLine = '\n'
+        newLine = newLine.replace("\\n","\n").replace("\\t","\t")
+        delimiter = delimiter.replace("\\n","\n").replace("\\t","\t")
 
-        self._contentAsString = self._newLine.join([self._delimiter.join([str(elem) for elem in line]) for line in self])
+        self._contentAsString = newLine.join([delimiter.join([str(elem) for elem in line]) for line in self])
 
         return self._contentAsString
 
@@ -1527,9 +1529,9 @@ class Table:
         return copy.deepcopy(self)
 
     # export
-    def save(self, path):
+    def save(self, path, delimiter=None, newLine=None):
         f = open(path, 'w')
-        f.write(self.getString())
+        f.write(self.getString(delimiter,newLine))
 
     # MapReduce :
     def _init_mapping(self):
@@ -1744,7 +1746,7 @@ if __name__ == '__main__':
     # tab = Table(tab.getMappingAsTable(True), delimiter=';')
     # print(tab.getString())
     # tab.append({"fin de file"})
-    tab2 = Table(tab,delimiter = ';;').append(["test"]).save('out.txt')
+    tab2 = tab.append(["test"]).save('out.txt',delimiter=r'\t\t\t')
     # tab2 = tab.getCopy()
     # print(tab.pop())
     # print(tab2, tab)
