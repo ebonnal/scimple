@@ -1,16 +1,20 @@
 from __future__ import absolute_import
-
+import numpy as np
 import copy
 import inspect
+import multiprocessing
 import os
 import re
 import sys
+import math
 import types
 import warnings
 from random import randint
-from mpl_toolkits.mplot3d import Axes3D
+from threading import Thread
 import matplotlib.pyplot as plt
-a=Axes3D
+from mpl_toolkits.mplot3d import Axes3D
+
+a = Axes3D
 # -----------------------------------------------------------------------------
 # ply: py
 #
@@ -1328,28 +1332,56 @@ class Table:
             raise Exception()
         self._lastLine = lastLine  # int
         self._columnNames = columnNames  # list
-        self._contentAsString = None  # string
+        self._contentAsString = ""  # string
         self._floatTable = []  # string
-        self._delimiter = delimiter  # regExp
-        self._newLine = newLine  # regExp
+        self._delimiter = delimiter
+        self._newLine = newLine
         self._floatDot = (r'\.' if floatDot == '.' else floatDot)  # regExp
         self._numberFormatCharacter = numberFormatCharacter  # string
         self._ignore = ignore  # regExp
+        # MapReduce:
+        self._mapping = None
         # import file
-        try:
-            inFile = open(path, 'r')
-            self._contentAsString = inFile.read()
-            inFile.close()
-            self._parse()
-        except IOError as e:
-            print("SCIMPLE ERROR : le chemin " + path + " est introuvable :(" + \
-                  "I/O error({0}): {1}".format(e.errno, e.strerror))
+
+        if type(path) is not str:
+            try:
+                if self._delimiter == r'(\t|[ ])+':
+                    self._delimiter = ','
+                if self._newLine == r'(\t| )*((\r\n)|\n)':
+                    self._newLine = '\n'
+                for i in range(len(path)):
+                    self._floatTable.append([])
+                    for j in range(len(path[i])):
+                        self._floatTable[i].append(path[i][j])
+                        self._contentAsString += str(path[i][j])
+                        if j != len(path[i]) - 1:
+                            self._contentAsString += self._delimiter
+                    if i != len(path) - 1:
+                        self._contentAsString += self._newLine
+                print('input considered as array-like')
+
+
+            except Exception:
+                print('Unsupported array-like object in input')
+                raise
+        else:
+            try:
+                inFile = open(path, 'r')
+                self._contentAsString = inFile.read()
+                inFile.close()
+                self._parse()
+                print('input considered as path to file')
+            except IOError:
+                self._contentAsString = path
+                self._parse()
+                print('input considered as string content')
+
 
     def __str__(self):
-        return str(self.getTable())
+        return self.getString()
 
     def __unicode__(self):
-        return str(self.getTable())
+        return self.getString()
 
     def __repr__(self):
         return str(self.getTable())
@@ -1369,8 +1401,25 @@ class Table:
                 res = res[index]
             return res
 
+    def __delitem__(self, t):
+        res = self.getTable()
+        if type(t) is int:
+            del res[t]
+        else:
+            for index in t:
+                res = res[index]
+            del res
+
     def __len__(self):
         return len(self.getTable())
+
+    def append(self, elem):
+        self.getTable().append(list(elem))
+
+    def pop(self, i=-1):
+        popped = self[i]
+        del self[i]
+        return popped
 
     def _parse(self):
         # List of token names.
@@ -1437,7 +1486,6 @@ class Table:
                 break
             if self._printTokens:
                 print(tok)
-            last_tok = tok
             tok = lexer.token()
         if not tok and (self._lastLine is None or tok.lineno <= self._lastLine):
             currentLine.append(self._try_to_float(currentChars))
@@ -1462,7 +1510,120 @@ class Table:
         return self._floatTable
 
     def getString(self):
+        self._contentAsString = ""
+        if self._delimiter == r'(\t|[ ])+':
+            self._delimiter = ','
+        if self._newLine == r'(\t| )*((\r\n)|\n)':
+            self._newLine = '\n'
+        self._newLine = self._newLine.replace("\\n","\n").replace("\\t","\t")
+        self._delimiter = self._delimiter.replace("\\n","\n").replace("\\t","\t")
+        for i in range(len(self.getTable())):
+            for j in range(len(self.getTable()[i])):
+                self._contentAsString += str(self.getTable()[i][j])
+                if j != len(self.getTable()[i]) - 1:
+                    self._contentAsString += self._delimiter
+            if i != len(self.getTable()) - 1:
+                self._contentAsString += self._newLine
         return self._contentAsString
+
+    def getCopy(self):
+        return copy.deepcopy(self)
+
+    # export
+    def save(self, path):
+        f = open(path, 'w')
+        f.write(self.getString())
+
+    # MapReduce :
+    def _init_mapping(self):
+        if self._mapping == None:
+            self._mapping = dict()
+            for lineNum in range(len(self)):
+                self._mapping[lineNum + 1] = [self[lineNum]]
+
+    def getMapping(self):
+        self._init_mapping()
+        return self._mapping
+
+    def getMappingAsTable(self, flatten=False):
+        return [[key, self.getMapping()[key]] if not flatten else [key] + self.getMapping()[key]
+                for key in self.getMapping()]
+
+    def _build_mr_task(self, key, value_s, f, new_mapping, multi):
+        if multi:
+            newpairs = f(key, value_s)
+            for newkey, newvalue in newpairs:
+                if newkey in new_mapping:
+                    new_mapping[newkey].append(newvalue)
+                else:
+                    new_mapping[newkey] = [newvalue]
+        else:
+            newkey, newvalue = f(key, value_s)
+            if newkey in new_mapping:
+                new_mapping[newkey].append(newvalue)
+            else:
+                new_mapping[newkey] = [newvalue]
+    class _MRThread(Thread):
+        def __init__(self,type,keys,f,new_mapping,multi,table):
+            Thread.__init__(self)
+            self._type=type
+            self._keys=keys
+            self._f=f
+            self._new_mapping=new_mapping
+            self._multi=multi
+            self._table=table
+        def run(self):
+            if self._type == 'map':
+                for key in self._keys:
+                    for value in self._table._mapping[key]:
+                        self._table._build_mr_task(key, value, self._f, self._new_mapping, self._multi)
+            elif self._type == 'reduce':
+                for key in self._keys:
+                    self._table._build_mr_task(key, self._table._mapping[key], self._f, self._new_mapping, self._multi)
+            else:
+                print("error code 62786289629")
+    def _melt_mappings(self,mappings):
+        print("here")
+        melted_mapping=dict()
+        for mapping in mappings:
+            for key in mapping:
+                if key in melted_mapping:
+                    melted_mapping[key] += mapping[key][:]
+                else:
+                    melted_mapping[key] = mapping[key][:]
+        return melted_mapping
+    def _perform_map_or_reduce(self,type, f, multi, threads):
+        new_mappings = [{} for _ in range(threads)]
+        keys = list(self.getMapping().keys()) # _init_mapping() ran during getMapping
+        threads = min(threads,len(keys))
+        keys_parts = [[] for _ in range(threads)]
+        for i in range(len(keys)):
+            keys_parts[i%threads].append(keys[i])
+        print(555,keys_parts)
+        threads_list = list()
+        for i in range(threads):
+            threads_list.append(self._MRThread(type, keys_parts[i], f, new_mappings[i], multi, self))
+        for thread in threads_list:
+            thread.start()
+        for thread in threads_list:
+            thread.join()
+        self._mapping = self._melt_mappings(new_mappings)
+    def map(self, f, multi=False, threads=multiprocessing.cpu_count()):
+        """
+        f du type lambda key value : return (key, value)
+        :return: self (to chain)
+        """
+        self._perform_map_or_reduce('map', f, multi, threads)
+        return self
+
+    def reduce(self, f, multi=False, threads=multiprocessing.cpu_count()):
+        """
+        f : lambda key, values_list : key, value
+        :param f:
+        :return: self (to chain)
+        """
+        self._perform_map_or_reduce('reduce', f, multi, threads)
+        return self
 
 
 def run_example():
@@ -1472,7 +1633,7 @@ def run_example():
     def get_data(path):
         return os.path.join(_ROOT, 'scimple_data', path)
 
-    source ="""print("Few Examples Of Scimple Plots :), are they well displayed ? \SOURCE :" + source)
+    source = """print("Few Examples Of Scimple Plots :), are they well displayed ? \SOURCE :" + source)
     # example :
     moleculeTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=3, lastLine=103)
     grapheneTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=104, lastLine=495)
@@ -1569,15 +1730,25 @@ def run_example():
 
 
 if __name__ == '__main__':
-    run_example()
-    print(7, Table("test.txt", firstLine=4, lastLine=4)[0], Table("test.txt", firstLine=4, lastLine=4)[0, 1],
-          Table("test.txt", firstLine=4, lastLine=4)[0][1])
+    # run_example()
+    tab = Table("test.txt", firstLine=3, lastLine=495)
 
-    print(Table("test.txt", lastLine=4))
+    print(tab.getMapping())
+    # tab.map(lambda lineNum, line: (line[1], line[4])) \
+    #     .map(lambda key, value: (key, value + 2)) \
+    #     .reduce(lambda key, values_list: (key, sum(values_list) / len(values_list))) \
+    #     .map(lambda key, value: (len(key),1)) \
+    #     .reduce(lambda key, values_list: (key,sum(values_list)))
 
-    print(Table("test.txt", delimiter="[ ];", lastLine=5))
-
-    print(Table("test.txt"))
-
-
-    # mydata=Table(firstLine=1,lastLine=10,delimiter=r"\n",newLine="jhiotioh",ignore=" \t")
+    tab.map(lambda lineNum, line: (line[1],1)) \
+        .reduce(lambda key, values_list: [(key, sum(values_list))] if isinstance(key,str) else [], multi=True)
+    print(tab.getMapping())
+    print(tab.getMappingAsTable(True))
+    tab = Table(tab.getMappingAsTable(True), delimiter=';')
+    print(tab.getString())
+    tab.append({"fin de file"})
+    tab.save("out.txt")
+    tab2 = tab.getCopy()
+    print(tab.pop())
+    print(tab2, tab)
+    print(Table("14 41546 ej;\t zkozf 45 64   ",newLine=r'\t').getString(),Table("14 41546 ej;\n zkozf 45 64   ",newLine='\\n').getTable())

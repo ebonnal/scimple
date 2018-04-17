@@ -1,0 +1,6 @@
+H;36
+O;8
+C;444
+N;4
+Fe;1
+fin de file

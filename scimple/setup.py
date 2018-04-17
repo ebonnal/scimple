@@ -5,7 +5,7 @@ setup(
     version='1.6',
     packages=['scimple_data'],
 	py_modules=['scimple'],
-    install_requires=['matplotlib','numpy'],
+    install_requires=['matplotlib','numpy','mpl_toolkits'],
 	package_data={'scimple_data': ['*']},
     url='http://github.com/EnzoBnl/Scimple',
     license='',
