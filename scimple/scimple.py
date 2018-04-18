@@ -1187,8 +1187,10 @@ class Plot:
         self._dim = dim  # string
         self._plotables = []
 
+
     def add(self, table, xColNum, yColNum, zColNum=None, label="" \
-            , color=None, coloredBy=None, plotType='o', markersize=9):
+            , coloredBy=None, plotType='o', markersize=9):
+
         if self._dim == 2:
             if zColNum != None:
                 print("SCIMPLE ERROR : z column declaration for 2D plot forbidden")
@@ -1306,7 +1308,7 @@ class Plot:
                 raise Exception()
             if self._atLeastOneLabelDefined:
                 self._ax.legend(loc='upper right', shadow=True).draggable()
-
+        return self
 
 def show():
     plt.show()
@@ -1317,21 +1319,21 @@ def showAndBlock():
 
 
 class Table:
-    def __init__(self, path, firstLine=1, lastLine=None, columnNames=None \
+    def __init__(self, path, firstLine=0, lastLine=None, columnNames=None \
                  , delimiter=r'(\t|[ ])+', newLine=r'(\t| )*((\r\n)|\n)', floatDot='.', numberFormatCharacter='',
                  ignore="", \
                  printTokens=False, printError=False):
+
         # dev args:
         self._printTokens = printTokens
         self._printError = printError
         # init fields
         self._path = path  # string
         self._firstLine = firstLine  # int
-        if (lastLine is not None and lastLine <= 0):
+        if (lastLine is not None and lastLine < 0):
             print("SCIMPLE ERROR : lastLine Argument must be >=1")
             raise Exception()
         self._lastLine = lastLine  # int
-        self._columnNames = columnNames  # list
         self._contentAsString = ""  # string
         self._floatTable = []  # string
         self._delimiter = delimiter
@@ -1345,22 +1347,8 @@ class Table:
 
         if type(path) is not str:
             try:
-                if self._delimiter == r'(\t|[ ])+':
-                    self._delimiter = ','
-                if self._newLine == r'(\t| )*((\r\n)|\n)':
-                    self._newLine = '\n'
-                for i in range(len(path)):
-                    self._floatTable.append([])
-                    for j in range(len(path[i])):
-                        self._floatTable[i].append(path[i][j])
-                        self._contentAsString += str(path[i][j])
-                        if j != len(path[i]) - 1:
-                            self._contentAsString += self._delimiter
-                    if i != len(path) - 1:
-                        self._contentAsString += self._newLine
+                self._floatTable = [[elem for elem in line] for line in (path[max(0,firstLine):lastLine+1] if lastLine else path[max(0,firstLine):])]
                 print('input considered as array-like')
-
-
             except Exception:
                 print('Unsupported array-like object in input')
                 raise
@@ -1376,6 +1364,10 @@ class Table:
                 self._parse()
                 print('input considered as string content')
 
+        if columnNames is None:
+            self._columnNames = {str(self.getTable()[0][i]): i for i in range(len(self.getTable()[0]))}  # list
+        else:
+            self._columnNames = {columnNames[i]: i for i in range(len(columnNames))}  # list
 
     def __str__(self):
         return self.getString()
@@ -1392,23 +1384,35 @@ class Table:
     def __bool__(self):
         return bool(len(self.getTable()))
 
-    def __getitem__(self, t):
-        res = self.getTable()
-        if type(t) is int:
-            return res[t]
+    def _from_col_name_to_int(self,t):
+        if type(t) == int:return t
+        elif type(t) == str:return self._columnNames[t]
         else:
-            for index in t:
-                res = res[index]
-            return res
+            return tuple({(self._columnNames[elem] if type(elem) is str else elem) for elem in t})
+
+
+    def __getitem__(self, t):
+        """
+
+        :param t: tuple/str : accès aux colonnes (nom ou numero (debut à 0), int : accès à une ligne, slice : accès à des lignes
+        :return:
+        """
+        if type(t) in {slice,int}:
+            return self.getTable()[t]
+        if type(t) is str:
+            return self.getTable(t)
+        if type(t) is tuple:
+            t = self._from_col_name_to_int(t)
+            return self.getTable(t)
+
 
     def __delitem__(self, t):
-        res = self.getTable()
-        if type(t) is int:
-            del res[t]
-        else:
-            for index in t:
-                res = res[index]
-            del res
+        if type(t) in {slice,int}:
+            del self.getTable()[t]
+        if type(t) is str:
+            self._filter_by_columns_del_keep('del',t)
+        if type(t) is tuple:
+            self._filter_by_columns_del_keep('del',t)
 
     def __len__(self):
         return len(self.getTable())
@@ -1417,9 +1421,23 @@ class Table:
         self.getTable().append(list(elem))
         return self
 
-    def pop(self, i=-1):
-        popped = self[i]
-        del self[i]
+    def pop(self,columns_num_tuple, *columns_num):
+        if type(columns_num_tuple) is str:
+            columns = [columns_num_tuple]
+            for name in columns_num:
+                columns.append(name)
+        else:
+            columns = columns_num_tuple
+        columns = tuple(columns)
+        if type(columns) in {slice,int}:
+            popped = self.getTable()[columns]
+            del self.getTable()[columns]
+        elif type(columns) is str:
+            popped = self.getTable(columns)
+            self._filter_by_columns_del_keep('del',columns)
+        elif type(columns) is tuple:
+            popped = self.getTable(columns)
+            self._filter_by_columns_del_keep('del',columns)
         return popped
 
     def _parse(self):
@@ -1472,7 +1490,7 @@ class Table:
         tok = lexer.token()
         last_tok = None
         while tok:
-            if tok.lineno >= self._firstLine and (self._lastLine is None or tok.lineno <= self._lastLine):
+            if tok.lineno >= self._firstLine+1 and (self._lastLine is None or tok.lineno <= self._lastLine+1):
                 if tok.type == "newLine":
                     currentLine.append(self._try_to_float(currentChars))
                     currentChars = ''
@@ -1483,12 +1501,12 @@ class Table:
                     currentChars = ''
                 else:
                     currentChars += tok.value
-            elif not (self._lastLine is None or tok.lineno <= self._lastLine):
+            elif not (self._lastLine is None or tok.lineno <= self._lastLine+1):
                 break
             if self._printTokens:
                 print(tok)
             tok = lexer.token()
-        if not tok and (self._lastLine is None or tok.lineno <= self._lastLine):
+        if not tok and (self._lastLine is None or tok.lineno <= self._lastLine+1):
             currentLine.append(self._try_to_float(currentChars))
             self._floatTable.append(currentLine)
 
@@ -1506,9 +1524,64 @@ class Table:
             return s
 
     # public :
-    def getTable(self):
+    def get_columns_names(self):
+        return self._columnNames
+    def set_columns_names(self, columns_num_tuple, *columns_num):
+        if type(columns_num_tuple) is str:
+            columns = [columns_num_tuple]
+            for name in columns_num:
+                columns.append(name)
+        else:
+            columns = columns_num_tuple
+        self._columnNames = {columns[i]:i for i in range(len(columns))}
+    def keep_columns(self, columns_num_tuple, *columns_num):
+        return self._filter_by_columns_del_keep('keep', columns_num_tuple, *columns_num)
+
+    def _filter_by_columns_del_keep(self,del_or_keep, columns_num_tuple, *columns_num):
+        if type(columns_num_tuple) in {str,int}:
+            columns = [columns_num_tuple]
+            for name in columns_num:
+                columns.append(name)
+        else:
+            columns = columns_num_tuple
+        columns = self._from_col_name_to_int(columns)
+        for line in self:
+            i=0
+            j=0
+            while i<len(line):
+                if (del_or_keep == 'del' and i in columns) or (del_or_keep == 'keep' and i not in columns):
+                    del line[j]
+                    i+=1
+                else:
+                    j+=1
+                    i+=1
+        i=0
+        j=0
+        new_columns_names = dict()
+        for key in self._columnNames.keys():
+            if (del_or_keep == 'del' and i not in columns) or (del_or_keep == 'keep' and i in columns):
+                new_columns_names[key] = j
+                j+=1
+            i += 1
+
+        self._columnNames = new_columns_names
+
+
+        return self
+    def getTable(self,columns_num_tuple=None,*columns_num):
         """returns the table (list of list) of floats with None for empty fields"""
-        return self._floatTable
+        if columns_num_tuple is not None:
+            if type(columns_num_tuple) in {str,int}:
+                columns = [columns_num_tuple]
+                for name in columns_num:
+                    columns.append(name)
+            else:
+                columns = columns_num_tuple
+            columns = self._from_col_name_to_int(columns)
+            res=[[line[i] for i in range(len(line)) if i in columns] for line in self]
+            return res
+        else:
+            return self._floatTable
 
     def getString(self, delimiter=None, newLine=None):
         if delimiter == None:delimiter = self._delimiter
@@ -1539,13 +1612,28 @@ class Table:
             self._mapping = dict()
             for lineNum in range(len(self)):
                 self._mapping[lineNum + 1] = [self[lineNum]]
+    def set_mapping_from_table(self):
+        self._mapping = dict()
+        for lineNum in range(len(self)):
+            self._mapping[lineNum + 1] = [self[lineNum]]
 
     def getMapping(self):
         self._init_mapping()
         return self._mapping
 
     def getMappingAsTable(self, flatten=False):
-        return [[key, self.getMapping()[key]] if not flatten else [key] + self.getMapping()[key]
+        def flatten_n_times(n, l):
+            n = int(n)
+
+            for _ in range(n - 1):
+                if any(type(elem) is list for elem in l):
+                    res = []
+                    for elem in l:
+                        res += elem if type(elem) is list else [elem]
+                    l = res
+            return l
+        return [[key, self.getMapping()[key]] if not flatten else [key]
+                                                                  + flatten_n_times(flatten,self.getMapping()[key])
                 for key in self.getMapping()]
 
     def _build_mr_task(self, key, value_s, f, new_mapping, multi):
@@ -1562,6 +1650,7 @@ class Table:
                 new_mapping[newkey].append(newvalue)
             else:
                 new_mapping[newkey] = [newvalue]
+
     class _MRThread(Thread):
         def __init__(self,type,keys,f,new_mapping,multi,table):
             Thread.__init__(self)
@@ -1582,7 +1671,6 @@ class Table:
             else:
                 print("error code 62786289629")
     def _melt_mappings(self,mappings):
-        print("here")
         melted_mapping=dict()
         for mapping in mappings:
             for key in mapping:
@@ -1598,7 +1686,6 @@ class Table:
         keys_parts = [[] for _ in range(threads)]
         for i in range(len(keys)):
             keys_parts[i%threads].append(keys[i])
-        print(555,keys_parts)
         threads_list = list()
         for i in range(threads):
             threads_list.append(self._MRThread(type, keys_parts[i], f, new_mappings[i], multi, self))
@@ -1624,13 +1711,22 @@ class Table:
         self._perform_map_or_reduce('reduce', f, multi, threads)
         return self
 
+def _get_data(path):
+        return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path)
+
+def get_sample(id):
+    dic = {'xyz' : "phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"
+        ,'charges':'CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel','surfaces':'ek_InTP_CO2_Me_4_graphene_W_r2_k.dat'}
+    if id == 'xyz':
+        return Table(_get_data(dic[id]))
+    elif id == 'charges':
+        return Table([line[1:] for line in Table(_get_data(dic[id]))])
+    elif id == 'surfaces':
+        return Table([line[1:] for line in Table(_get_data(dic[id]))])
 
 def run_example():
-    _ROOT = os.path.abspath(os.path.dirname(__file__))
 
     # os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path)
-    def get_data(path):
-        return os.path.join(_ROOT, 'scimple_data', path)
 
     source = """print("Few Examples Of Scimple Plots :), are they well displayed ? \SOURCE :" + source)
     # example :
@@ -1678,9 +1774,9 @@ def run_example():
     showAndBlock()"""
     print("Few Examples Of Scimple Plots :), are they well displayed ? \SOURCE :" + source)
     # example :
-    moleculeTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=3, lastLine=103)
-    grapheneTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=104, lastLine=495)
-    chargesGraphene = Table(get_data("CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel"), firstLine=104, lastLine=495)
+    moleculeTable = Table(get_sample('xyz'), firstLine=3, lastLine=103)
+    grapheneTable = Table(get_sample('xyz'), firstLine=104, lastLine=495)
+    chargesGraphene = Table(get_sample('charge'), firstLine=104, lastLine=495)
 
     # print(moleculeTable)
 
@@ -1729,8 +1825,11 @@ def run_example():
 
 
 if __name__ == '__main__':
+    # print(help(Table))
+    # print(help(Plot))
     # run_example()
-    tab = Table("test.txt", firstLine=3, lastLine=495)
+
+    tab = Table(get_sample('xyz'), firstLine=2, lastLine=494,columnNames=['rien','name','x','y']).keep_columns('name', 'x', 'y', 5)
 
     # print(tab.getMapping())
     # tab.map(lambda lineNum, line: (line[1], line[4])) \
@@ -1746,7 +1845,7 @@ if __name__ == '__main__':
     # tab = Table(tab.getMappingAsTable(True), delimiter=';')
     # print(tab.getString())
     # tab.append({"fin de file"})
-    tab2 = tab.append(["test"]).save('out.txt',delimiter=r'\t\t\t')
+    #tab2 = tab.append(["test"]).save('out.txt',delimiter=r'\t\t\t')
     # tab2 = tab.getCopy()
     # print(tab.pop())
     # print(tab2, tab)
