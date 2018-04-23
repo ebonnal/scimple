@@ -3,13 +3,13 @@ from setuptools import setup
 setup(
     name='scimple',
     version='1.6',
-    packages=['scimple_data'],
 	py_modules=['scimple'],
-    install_requires=['matplotlib','numpy','mpl_toolkits'],
+    install_requires=['matplotlib','numpy'],
+    packages=['scimple_data'],
 	package_data={'scimple_data': ['*']},
     url='http://github.com/EnzoBnl/Scimple',
     license='',
     author='Enzo Bonnal',
     author_email='enzobonnal@gmail.com',
-    description='Plot your data in 3 lines'
+    description='Parse and Plot your data in 2 lines of code'
 )

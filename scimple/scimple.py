@@ -1,20 +1,23 @@
 from __future__ import absolute_import
-import numpy as np
+
 import copy
 import inspect
 import multiprocessing
 import os
 import re
 import sys
-import math
 import types
 import warnings
 from random import randint
 from threading import Thread
+
 import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib import cm
+from matplotlib import gridspec
 from mpl_toolkits.mplot3d import Axes3D
 
-a = Axes3D
+_ = Axes3D
 # -----------------------------------------------------------------------------
 # ply: py
 #
@@ -48,13 +51,7 @@ a = Axes3D
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # -----------------------------------------------------------------------------
 
-# This tuple contains known string types
-try:
-    # Python 2.6
-    StringTypes = (types.StringType, types.UnicodeType)
-except AttributeError:
-    # Python 3.0
-    StringTypes = (str, bytes)
+StringTypes = (str, bytes)
 
 # This regular expression is used to match valid token names
 _is_identifier = re.compile(r'^[a-zA-Z0-9_]+$')
@@ -70,6 +67,11 @@ class LexError(Exception):
 
 # Token class.  This class is used to represent the tokens produced.
 class LexToken(object):
+    type = None
+    value = None
+    lineno = None
+    lexpos = None
+
     def __str__(self):
         return 'LexToken(%s,%r,%d,%d)' % (self.type, self.value, self.lineno, self.lexpos)
 
@@ -87,13 +89,13 @@ class PlyLogger(object):
     def __init__(self, f):
         self.f = f
 
-    def critical(self, msg, *args, **kwargs):
+    def critical(self, msg, *args):
         self.f.write((msg % args) + '\n')
 
-    def warning(self, msg, *args, **kwargs):
+    def warning(self, msg, *args):
         self.f.write('WARNING: ' + (msg % args) + '\n')
 
-    def error(self, msg, *args, **kwargs):
+    def error(self, msg, *args):
         self.f.write('ERROR: ' + (msg % args) + '\n')
 
     info = critical
@@ -1153,12 +1155,19 @@ def randomColor(racinecubiquesup, pas):
 
 
 class Plot:
-    def __init__(self, dim=2, title="", borders=None, xlabel="", ylabel="", zlabel=""):
+    def __init__(self, dim=2, title="", borders=None, xlabel="", ylabel="", zlabel="", bg_color=None):
         self._atLeastOneLabelDefined = False
         plt.rcParams['lines.color'] = 'b'
+        self._gs = gridspec.GridSpec(2, 2, width_ratios=[50, 1], height_ratios=[1, 50])
+        self._color_bar_nb = 0
         if dim == 2:
-            self._fig, self._ax = plt.subplots()
+            self._fig = plt.figure()
+            self._ax = self._fig.add_subplot(self._gs[2])
             self._ax.set_title(title)
+            self._ax.set_xlabel(xlabel)
+            self._ax.set_ylabel(ylabel)
+            if bg_color:
+                self._ax.set_facecolor(bg_color)
             if type(borders) == list:
                 if len(borders) == 4:
                     self._ax.set_xlim(borders[0], borders[1])
@@ -1168,11 +1177,13 @@ class Plot:
                     raise Exception()
         elif dim == 3:
             self._fig = plt.figure()
-            self._ax = self._fig.gca(projection='3d')
+            self._ax = self._fig.add_subplot(self._gs[2], projection='3d')
             self._ax.set_title(title)
             self._ax.set_xlabel(xlabel)
             self._ax.set_ylabel(ylabel)
             self._ax.set_zlabel(zlabel)
+            if bg_color:
+                self._ax.set_facecolor(bg_color)
             if type(borders) == list:
                 if len(borders) == 6:
                     self._ax.set_xlim(borders[0], borders[1])
@@ -1187,10 +1198,40 @@ class Plot:
         self._dim = dim  # string
         self._plotables = []
 
+    def _pastelize(self, color, coef_pastel=2, coef_fonce=0.75):
+        if color[0] != '#':
+            color = '#' + color
+        colors = [int('0x' + color[1:3], 0), int('0x' + color[3:5], 0), int('0x' + color[5:7], 0)]
+        for i in range(len(colors)):
+            colors[i] = (colors[i] + (255 - colors[i]) / coef_pastel) * coef_fonce
+        return '#' + ''.join(map(lambda x: hex(int(x))[2:], colors))
 
-    def add(self, table, xColNum, yColNum, zColNum=None, label="" \
-            , coloredBy=None, plotType='o', markersize=9):
+    def _print_color_bar(self, colorLabel, mini, maxi):
+        self._color_bar_nb += 1
+        if self._color_bar_nb == 3:
+            raise Exception("only 2 function-colored plots available")
+        ax2 = self._fig.add_subplot(self._gs[3 if self._color_bar_nb == 1 else 0])
+        ax2.imshow([[i] for i in np.arange(maxi, mini, (mini - maxi) / 100)] if self._color_bar_nb == 1 else
+                   [[i for i in np.arange(maxi, mini, (mini - maxi) / 100)]],
+                   interpolation='nearest',
+                   cmap=[cm.gray, cm.autumn][self._color_bar_nb - 1],
+                   extent=[maxi / 70, mini / 70, mini, maxi] if self._color_bar_nb == 1 else [maxi, mini, mini / 70,
+                                                                                              maxi / 70])
+        ax2.ticklabel_format(axis='yx', style='sci', scilimits=(-2, 2))
+        ax2.legend().set_visible(False)
+        if self._color_bar_nb == 1:
+            ax2.set_xticks([])
+            ax2.set_ylabel(colorLabel)
+            ax2.yaxis.tick_right()
+        else:
+            ax2.set_yticks([])
+            ax2.set_xlabel(colorLabel)
+            ax2.xaxis.tick_top()
 
+    def add(self, table, xColNum, yColNum, zColNum=None, firstLine=0, lastLine=None, label="" \
+            , coloredBy=None, colorLabel='', plotType='o', markersize=9):
+        if lastLine is None:
+            lastLine = len(table) - 1
         if self._dim == 2:
             if zColNum != None:
                 print("SCIMPLE ERROR : z column declaration for 2D plot forbidden")
@@ -1198,17 +1239,94 @@ class Plot:
             if label != "":
                 self._atLeastOneLabelDefined = True
             X, Y = [], []
-            for lineIndex in range(0, len(table)):
+            for lineIndex in range(firstLine, min(lastLine + 1, len(table))):
                 if len(table[lineIndex]) > max(xColNum, yColNum):
                     X.append(table[lineIndex][xColNum])
                     Y.append(table[lineIndex][yColNum])
             if coloredBy != None:
-                plt.plot(X, Y, plotType, label=label, color=coloredBy, markersize=markersize)
+                if type(coloredBy) is str:
+                    plt.plot(X, Y, plotType, label=label, color=coloredBy, markersize=markersize)
+                elif type(coloredBy) is int:
+                    self._atLeastOneLabelDefined = True
+                    # build groupsDico
+                    groupsDic = {}
+                    for index in range(firstLine, min(lastLine + 1, len(table))):
+                        line = table[index]
+                        if line[coloredBy] in groupsDic:
+                            groupsDic[line[coloredBy]] += [line]
+                        else:
+                            groupsDic[line[coloredBy]] = [line]
+                    racinecubiquesup = 0
+                    while racinecubiquesup ** 3 - racinecubiquesup <= len(groupsDic):
+                        racinecubiquesup += 1
+                    pas = 255 // (racinecubiquesup - 1)
+                    listOfUsedColors = []
+                    for group in groupsDic:
+                        table = groupsDic[group]
+                        X, Y = [], []
+                        for lineIndex in range(firstLine, min(lastLine + 1, len(table))):
+                            if len(table[lineIndex]) > max(xColNum, yColNum):
+                                X.append(table[lineIndex][xColNum])
+                                Y.append(table[lineIndex][yColNum])
+                        groupColor = randomColor(racinecubiquesup, pas)
+                        while groupColor in listOfUsedColors:
+                            groupColor = randomColor(racinecubiquesup, pas)
+                        listOfUsedColors.append(groupColor)
+
+                        self._ax.plot(X, Y, plotType, label=str(group), color=self._pastelize(groupColor),
+                                      markersize=markersize)
+                elif str(type(
+                        coloredBy)) == "<class 'function'>":  # and type(coloredBy(1,table[0]))==int :#lineNum,lineList -> int indicateur
+
+                    maxi = None
+                    mini = None
+                    for i in range(firstLine, min(lastLine + 1, len(table))):
+                        try:
+                            value = coloredBy(i, table[i])
+                        except Exception:
+                            value = maxi
+                        if maxi is None:
+                            maxi = value
+                            mini = value
+                        try:
+                            maxi = max(maxi, value)
+                            mini = min(mini, value)
+                        except:
+                            print(454545)
+                    self._print_color_bar(colorLabel, mini, maxi)
+
+                    if label != "":
+                        self._atLeastOneLabelDefined = True
+                    colorDico = {}  # hexa -> plotable lines
+                    for lineIndex in range(firstLine, min(lastLine + 1, len(table))):
+                        if len(table[lineIndex]) > max(xColNum, yColNum):
+                            colorRes = coloredBy(lineIndex, table[lineIndex])
+                            deux = colorRes - mini
+                            maxolo = max(0, deux)
+                            minolo = min(255, maxolo * 255 / (maxi - mini))
+                            colorHexaUnit = hex(int(minolo))[2:]
+                            if len(colorHexaUnit) == 1:
+                                colorHexaUnit = "0" + colorHexaUnit
+                            color = "#" + colorHexaUnit * 3 if self._color_bar_nb == 1 else "#ff" + colorHexaUnit + "00"
+                            if color in colorDico:
+                                colorDico[color][0] += [table[lineIndex][xColNum]]
+                                colorDico[color][1] += [table[lineIndex][yColNum]]
+                            else:
+                                colorDico[color] = [[table[lineIndex][xColNum]], \
+                                                    [table[lineIndex][yColNum]]]
+
+                    legendOn = True
+                    for colorGroup in colorDico:
+                        self._ax.plot(colorDico[colorGroup][0], colorDico[colorGroup][1], \
+                                      plotType, label=(label if legendOn else ""),
+                                      color=colorGroup, markersize=markersize, solid_capstyle="round")
+                        legendOn = False
             else:
-                plt.plot(X, Y, plotType, label=label, markersize=markersize)
+                self._ax.plot(X[firstLine:min(lastLine + 1, len(table))], Y[firstLine:min(lastLine + 1, len(table))],
+                              plotType, label=label, markersize=markersize)
 
             if self._atLeastOneLabelDefined:
-                plt.legend(loc='upper right', shadow=True).draggable()
+                self._ax.legend(loc='upper right', shadow=True).draggable()
 
         else:
             if zColNum is None:
@@ -1218,7 +1336,8 @@ class Plot:
                 self._atLeastOneLabelDefined = True
                 # build groupsDico
                 groupsDic = {}
-                for line in table:
+                for index in range(firstLine, min(lastLine + 1, len(table))):
+                    line = table[index]
                     if line[coloredBy] in groupsDic:
                         groupsDic[line[coloredBy]] += [line]
                     else:
@@ -1231,7 +1350,7 @@ class Plot:
                 for group in groupsDic:
                     table = groupsDic[group]
                     X, Y, Z = [], [], []
-                    for lineIndex in range(0, len(table)):
+                    for lineIndex in range(firstLine, min(lastLine + 1, len(table))):
                         if len(table[lineIndex]) > max(xColNum, yColNum, zColNum):
                             X.append(table[lineIndex][xColNum])
                             Y.append(table[lineIndex][yColNum])
@@ -1240,13 +1359,13 @@ class Plot:
                     while groupColor in listOfUsedColors:
                         groupColor = randomColor(racinecubiquesup, pas)
                     listOfUsedColors.append(groupColor)
-                    self._ax.plot(X, Y, Z, plotType, label=str(group), color=groupColor, markersize=markersize)
+                    self._ax.plot(X, Y, Z, plotType, label=str(group), color=self._pastelize(groupColor),
+                                  markersize=markersize)
             elif str(type(
                     coloredBy)) == "<class 'function'>":  # and type(coloredBy(1,table[0]))==int :#lineNum,lineList -> int indicateur
-
                 maxi = None
                 mini = None
-                for i in range(len(table)):
+                for i in range(firstLine, min(lastLine + 1, len(table))):
                     try:
                         value = coloredBy(i, table[i])
                     except Exception:
@@ -1259,11 +1378,12 @@ class Plot:
                         mini = min(mini, value)
                     except:
                         print(454545)
+                self._print_color_bar(colorLabel, mini, maxi)
 
                 if label != "":
                     self._atLeastOneLabelDefined = True
                 colorDico = {}  # hexa -> plotable lines
-                for lineIndex in range(0, len(table)):
+                for lineIndex in range(firstLine, min(lastLine + 1, len(table))):
                     if len(table[lineIndex]) > max(xColNum, yColNum, zColNum):
                         colorRes = coloredBy(lineIndex, table[lineIndex])
                         deux = colorRes - mini
@@ -1272,7 +1392,7 @@ class Plot:
                         colorHexaUnit = hex(int(minolo))[2:]
                         if len(colorHexaUnit) == 1:
                             colorHexaUnit = "0" + colorHexaUnit
-                        color = "#" + colorHexaUnit * 3
+                        color = "#" + colorHexaUnit * 3 if self._color_bar_nb == 1 else "#ff" + colorHexaUnit + "00"
                         if color in colorDico:
                             colorDico[color][0] += [table[lineIndex][xColNum]]
                             colorDico[color][1] += [table[lineIndex][yColNum]]
@@ -1293,7 +1413,7 @@ class Plot:
                 if label != "":
                     self._atLeastOneLabelDefined = True
                 X, Y, Z = [], [], []
-                for lineIndex in range(0, len(table)):
+                for lineIndex in range(firstLine, min(lastLine + 1, len(table))):
                     if len(table[lineIndex]) > max(xColNum, yColNum, zColNum):
                         X.append(table[lineIndex][xColNum])
                         Y.append(table[lineIndex][yColNum])
@@ -1310,6 +1430,7 @@ class Plot:
                 self._ax.legend(loc='upper right', shadow=True).draggable()
         return self
 
+
 def show():
     plt.show()
 
@@ -1317,12 +1438,171 @@ def show():
 def showAndBlock():
     plt.show(block=True)
 
+class Line:
+    def __init__(self,line,columnNames=None, delimiter = None):
+        self._columnNames = columnNames
+        self._line = line
+        self._delimiter = delimiter
+        self._contentAsString = ""  # string
+    def __contains__(self, elem_to_find):
+        return elem_to_find in self._list
+
+    def __str__(self):
+        return self.getString()
+
+    def __unicode__(self):
+        return self.getString()
+
+    def __repr__(self):
+        return str(self.getLine())
+
+    def __iter__(self):
+        return iter(self.getLine())
+
+    def __bool__(self):
+        return bool(len(self.getLine()))
+
+    def _from_col_name_to_int(self, t):
+        if type(t) == int:
+            return t
+        elif type(t) == str:
+            return self._columnNames[t]
+        else:
+            return tuple({(self._columnNames[elem] if type(elem) is str else elem) for elem in t})
+
+    def __getitem__(self, t):
+        """
+
+        :param t: tuple/str : accès aux colonnes (nom ou numero (debut à 0), int : accès à une ligne, slice : accès à des lignes
+        :return:
+        """
+        if type(t) in {slice, int}:
+            return self.getLine()[t]
+        if type(t) is str:
+            return self.getLine(t)
+        if type(t) is tuple:
+            t = self._from_col_name_to_int(t)
+            return self.getLine(t)
+
+    def __delitem__(self, t):
+        if type(t) in {slice, int}:
+            del self.getLine()[t]
+        if type(t) is str:
+            self._filter_by_columns_del_keep('del', t)
+        if type(t) is tuple:
+            self._filter_by_columns_del_keep('del', t)
+
+    def __len__(self):
+        return len(self.getLine())
+
+    def append(self, elem):
+        self.getLine().append(list(elem))
+        return self
+
+    def pop(self, columns_num_tuple, *columns_num):
+        if type(columns_num_tuple) is str:
+            columns = [columns_num_tuple]
+            for name in columns_num:
+                columns.append(name)
+            columns = tuple(columns)
+        else:
+            columns = columns_num_tuple
+
+        if type(columns) in {slice, int}:
+            popped = self.getLine()[columns]
+            del self.getLine()[columns]
+        elif type(columns) is str:
+            popped = self.getLine(columns)
+            self._filter_by_columns_del_keep('del', columns)
+        elif type(columns) is tuple:
+            popped = self.getTable(columns)
+            self._filter_by_columns_del_keep('del', columns)
+        return popped
+    def get_columns_names(self):
+        return self._columnNames
+
+    def set_columns_names(self, columns_num_tuple, *columns_num):
+        if type(columns_num_tuple) is str:
+            columns = [columns_num_tuple]
+            for name in columns_num:
+                columns.append(name)
+        else:
+            columns = columns_num_tuple
+        self._columnNames = {columns[i]: i for i in range(len(columns))}
+
+    def keep_columns(self, columns_num_tuple, *columns_num):
+        return self._filter_by_columns_del_keep('keep', columns_num_tuple, *columns_num)
+
+    def _filter_by_columns_del_keep(self, del_or_keep, columns_num_tuple, *columns_num):
+        if type(columns_num_tuple) in {str, int}:
+            columns = [columns_num_tuple]
+            for name in columns_num:
+                columns.append(name)
+        else:
+            columns = columns_num_tuple
+        columns = self._from_col_name_to_int(columns)
+        for line in self:
+            i = 0
+            j = 0
+            while i < len(line):
+                if (del_or_keep == 'del' and i in columns) or (del_or_keep == 'keep' and i not in columns):
+                    del line[j]
+                    i += 1
+                else:
+                    j += 1
+                    i += 1
+        i = 0
+        j = 0
+        new_columns_names = dict()
+        for key in self._columnNames.keys():
+            if (del_or_keep == 'del' and i not in columns) or (del_or_keep == 'keep' and i in columns):
+                new_columns_names[key] = j
+                j += 1
+            i += 1
+
+        self._columnNames = new_columns_names
+
+        return self
+
+    def getLine(self, columns_num_tuple=None, *columns_num):
+        """returns the table (list of list) of floats with None for empty fields"""
+        if columns_num_tuple is not None:
+            if type(columns_num_tuple) in {str, int}:
+                columns = [columns_num_tuple]
+                for name in columns_num:
+                    columns.append(name)
+            else:
+                columns = columns_num_tuple
+            columns = self._from_col_name_to_int(columns)
+            res = [self._line[i] for i in range(len(self._line)) if i in columns]
+            return res
+        else:
+            return self._line
+
+    def getString(self, delimiter=None):
+        if delimiter == None:
+            delimiter = self._delimiter
+        self._contentAsString = ""
+        if delimiter == r'(\t|[ ])+':
+            delimiter = ','
+        delimiter = delimiter.replace("\\n", "\n").replace("\\t", "\t")
+        self._contentAsString = delimiter.join([str(elem) for elem in line])
+
+        return self._contentAsString
+
+    def getCopy(self):
+        return copy.deepcopy(self)
+
+    # export
+    def save(self, path, delimiter=None):
+        f = open(path, 'w')
+        f.write(self.getString(delimiter))
 
 class Table:
     def __init__(self, path, firstLine=0, lastLine=None, columnNames=None \
                  , delimiter=r'(\t|[ ])+', newLine=r'(\t| )*((\r\n)|\n)', floatDot='.', numberFormatCharacter='',
                  ignore="", \
-                 printTokens=False, printError=False):
+                 printTokens=False, printError=False, header=None):
 
         # dev args:
         self._printTokens = printTokens
@@ -1344,11 +1624,15 @@ class Table:
         # MapReduce:
         self._mapping = None
         # import file
-
-        if type(path) is not str:
+        if isinstance(path, Table):
+            columnNames = list(path.get_columns_names().keys())
+            self._floatTable = copy.deepcopy(path[max(0, firstLine):lastLine + 1] if lastLine
+                                             else path[max(0, firstLine):])
+        elif type(path) is not str:
             try:
-                self._floatTable = [[elem for elem in line] for line in (path[max(0,firstLine):lastLine+1] if lastLine else path[max(0,firstLine):])]
-                print('input considered as array-like')
+                self._floatTable = [list(line)[:] for line in
+                                    (path[max(0, firstLine):lastLine + 1] if lastLine else path[max(0, firstLine):])]
+                # print('input considered as array-like')
             except Exception:
                 print('Unsupported array-like object in input')
                 raise
@@ -1358,16 +1642,27 @@ class Table:
                 self._contentAsString = inFile.read()
                 inFile.close()
                 self._parse()
-                print('input considered as path to file')
+                # print('input considered as path to file')
             except IOError:
                 self._contentAsString = path
                 self._parse()
-                print('input considered as string content')
-
-        if columnNames is None:
-            self._columnNames = {str(self.getTable()[0][i]): i for i in range(len(self.getTable()[0]))}  # list
+                # print('input considered as string content')
+        if columnNames is None or len(columnNames) == 0:
+            if header is not None:
+                self._columnNames = {str(self[header][i]): i for i in
+                                     range(len(self[header]))}  # list
+                del self[header]
+            else:
+                self._columnNames = {}
         else:
             self._columnNames = {columnNames[i]: i for i in range(len(columnNames))}  # list
+
+    def __contains__(self, elem_to_find):
+        for line in self.getTable():
+            for elem in line:
+                if elem_to_find == elem:
+                    return True
+        return False
 
     def __str__(self):
         return self.getString()
@@ -1384,12 +1679,13 @@ class Table:
     def __bool__(self):
         return bool(len(self.getTable()))
 
-    def _from_col_name_to_int(self,t):
-        if type(t) == int:return t
-        elif type(t) == str:return self._columnNames[t]
+    def _from_col_name_to_int(self, t):
+        if type(t) == int:
+            return t
+        elif type(t) == str:
+            return self._columnNames[t]
         else:
             return tuple({(self._columnNames[elem] if type(elem) is str else elem) for elem in t})
-
 
     def __getitem__(self, t):
         """
@@ -1397,7 +1693,7 @@ class Table:
         :param t: tuple/str : accès aux colonnes (nom ou numero (debut à 0), int : accès à une ligne, slice : accès à des lignes
         :return:
         """
-        if type(t) in {slice,int}:
+        if type(t) in {slice, int}:
             return self.getTable()[t]
         if type(t) is str:
             return self.getTable(t)
@@ -1405,14 +1701,13 @@ class Table:
             t = self._from_col_name_to_int(t)
             return self.getTable(t)
 
-
     def __delitem__(self, t):
-        if type(t) in {slice,int}:
+        if type(t) in {slice, int}:
             del self.getTable()[t]
         if type(t) is str:
-            self._filter_by_columns_del_keep('del',t)
+            self._filter_by_columns_del_keep('del', t)
         if type(t) is tuple:
-            self._filter_by_columns_del_keep('del',t)
+            self._filter_by_columns_del_keep('del', t)
 
     def __len__(self):
         return len(self.getTable())
@@ -1421,23 +1716,23 @@ class Table:
         self.getTable().append(list(elem))
         return self
 
-    def pop(self,columns_num_tuple, *columns_num):
+    def pop(self, columns_num_tuple, *columns_num):
         if type(columns_num_tuple) is str:
             columns = [columns_num_tuple]
             for name in columns_num:
                 columns.append(name)
+            columns = tuple(columns)
         else:
             columns = columns_num_tuple
-        columns = tuple(columns)
-        if type(columns) in {slice,int}:
+        if type(columns) in {slice, int}:
             popped = self.getTable()[columns]
             del self.getTable()[columns]
         elif type(columns) is str:
             popped = self.getTable(columns)
-            self._filter_by_columns_del_keep('del',columns)
+            self._filter_by_columns_del_keep('del', columns)
         elif type(columns) is tuple:
             popped = self.getTable(columns)
-            self._filter_by_columns_del_keep('del',columns)
+            self._filter_by_columns_del_keep('del', columns)
         return popped
 
     def _parse(self):
@@ -1490,7 +1785,7 @@ class Table:
         tok = lexer.token()
         last_tok = None
         while tok:
-            if tok.lineno >= self._firstLine+1 and (self._lastLine is None or tok.lineno <= self._lastLine+1):
+            if tok.lineno >= self._firstLine + 1 and (self._lastLine is None or tok.lineno <= self._lastLine + 1):
                 if tok.type == "newLine":
                     currentLine.append(self._try_to_float(currentChars))
                     currentChars = ''
@@ -1501,12 +1796,12 @@ class Table:
                     currentChars = ''
                 else:
                     currentChars += tok.value
-            elif not (self._lastLine is None or tok.lineno <= self._lastLine+1):
+            elif not (self._lastLine is None or tok.lineno <= self._lastLine + 1):
                 break
             if self._printTokens:
                 print(tok)
             tok = lexer.token()
-        if not tok and (self._lastLine is None or tok.lineno <= self._lastLine+1):
+        if not tok and (self._lastLine is None or tok.lineno <= self._lastLine + 1):
             currentLine.append(self._try_to_float(currentChars))
             self._floatTable.append(currentLine)
 
@@ -1526,6 +1821,7 @@ class Table:
     # public :
     def get_columns_names(self):
         return self._columnNames
+
     def set_columns_names(self, columns_num_tuple, *columns_num):
         if type(columns_num_tuple) is str:
             columns = [columns_num_tuple]
@@ -1533,12 +1829,13 @@ class Table:
                 columns.append(name)
         else:
             columns = columns_num_tuple
-        self._columnNames = {columns[i]:i for i in range(len(columns))}
+        self._columnNames = {columns[i]: i for i in range(len(columns))}
+
     def keep_columns(self, columns_num_tuple, *columns_num):
         return self._filter_by_columns_del_keep('keep', columns_num_tuple, *columns_num)
 
-    def _filter_by_columns_del_keep(self,del_or_keep, columns_num_tuple, *columns_num):
-        if type(columns_num_tuple) in {str,int}:
+    def _filter_by_columns_del_keep(self, del_or_keep, columns_num_tuple, *columns_num):
+        if type(columns_num_tuple) in {str, int}:
             columns = [columns_num_tuple]
             for name in columns_num:
                 columns.append(name)
@@ -1546,53 +1843,53 @@ class Table:
             columns = columns_num_tuple
         columns = self._from_col_name_to_int(columns)
         for line in self:
-            i=0
-            j=0
-            while i<len(line):
+            i = 0
+            j = 0
+            while i < len(line):
                 if (del_or_keep == 'del' and i in columns) or (del_or_keep == 'keep' and i not in columns):
                     del line[j]
-                    i+=1
+                    i += 1
                 else:
-                    j+=1
-                    i+=1
-        i=0
-        j=0
+                    j += 1
+                    i += 1
+        i = 0
+        j = 0
         new_columns_names = dict()
         for key in self._columnNames.keys():
             if (del_or_keep == 'del' and i not in columns) or (del_or_keep == 'keep' and i in columns):
                 new_columns_names[key] = j
-                j+=1
+                j += 1
             i += 1
 
         self._columnNames = new_columns_names
 
-
         return self
-    def getTable(self,columns_num_tuple=None,*columns_num):
+
+    def getTable(self, columns_num_tuple=None, *columns_num):
         """returns the table (list of list) of floats with None for empty fields"""
         if columns_num_tuple is not None:
-            if type(columns_num_tuple) in {str,int}:
+            if type(columns_num_tuple) in {str, int}:
                 columns = [columns_num_tuple]
                 for name in columns_num:
                     columns.append(name)
             else:
                 columns = columns_num_tuple
             columns = self._from_col_name_to_int(columns)
-            res=[[line[i] for i in range(len(line)) if i in columns] for line in self]
+            res = [[line[i] for i in range(len(line)) if i in columns] for line in self]
             return res
         else:
             return self._floatTable
 
     def getString(self, delimiter=None, newLine=None):
-        if delimiter == None:delimiter = self._delimiter
-        if newLine == None:newLine = self._newLine
+        if delimiter == None: delimiter = self._delimiter
+        if newLine == None: newLine = self._newLine
         self._contentAsString = ""
         if delimiter == r'(\t|[ ])+':
             delimiter = ','
         if newLine == r'(\t| )*((\r\n)|\n)':
             newLine = '\n'
-        newLine = newLine.replace("\\n","\n").replace("\\t","\t")
-        delimiter = delimiter.replace("\\n","\n").replace("\\t","\t")
+        newLine = newLine.replace("\\n", "\n").replace("\\t", "\t")
+        delimiter = delimiter.replace("\\n", "\n").replace("\\t", "\t")
 
         self._contentAsString = newLine.join([delimiter.join([str(elem) for elem in line]) for line in self])
 
@@ -1604,7 +1901,7 @@ class Table:
     # export
     def save(self, path, delimiter=None, newLine=None):
         f = open(path, 'w')
-        f.write(self.getString(delimiter,newLine))
+        f.write(self.getString(delimiter, newLine))
 
     # MapReduce :
     def _init_mapping(self):
@@ -1612,66 +1909,62 @@ class Table:
             self._mapping = dict()
             for lineNum in range(len(self)):
                 self._mapping[lineNum + 1] = [self[lineNum]]
-    def set_mapping_from_table(self):
+
+    def reset_mapping(self):
         self._mapping = dict()
         for lineNum in range(len(self)):
             self._mapping[lineNum + 1] = [self[lineNum]]
+        return self
 
     def getMapping(self):
         self._init_mapping()
         return self._mapping
 
     def getMappingAsTable(self, flatten=False):
-        def flatten_n_times(n, l):
-            n = int(n)
 
-            for _ in range(n - 1):
-                if any(type(elem) is list for elem in l):
-                    res = []
-                    for elem in l:
-                        res += elem if type(elem) is list else [elem]
-                    l = res
-            return l
         return [[key, self.getMapping()[key]] if not flatten else [key]
-                                                                  + flatten_n_times(flatten,self.getMapping()[key])
+                                                                  + flatten_n_times(flatten - 1, self.getMapping()[key])
                 for key in self.getMapping()]
 
-    def _build_mr_task(self, key, value_s, f, new_mapping, multi):
-        if multi:
-            newpairs = f(key, value_s)
-            for newkey, newvalue in newpairs:
+    def _build_mr_task(self, key, value_s, f, new_mapping):
+        newpairs = f(key, value_s)
+        if newpairs is not None:
+            if type(newpairs) is list:
+                newpairs = f(key, value_s)
+                for newkey, newvalue in newpairs:
+                    if newkey in new_mapping:
+                        new_mapping[newkey].append(newvalue)
+                    else:
+                        new_mapping[newkey] = [newvalue]
+            elif type(newpairs) is tuple:
+                newkey, newvalue = f(key, value_s)
                 if newkey in new_mapping:
                     new_mapping[newkey].append(newvalue)
                 else:
                     new_mapping[newkey] = [newvalue]
-        else:
-            newkey, newvalue = f(key, value_s)
-            if newkey in new_mapping:
-                new_mapping[newkey].append(newvalue)
-            else:
-                new_mapping[newkey] = [newvalue]
 
     class _MRThread(Thread):
-        def __init__(self,type,keys,f,new_mapping,multi,table):
+        def __init__(self, type, keys, f, new_mapping, table):
             Thread.__init__(self)
-            self._type=type
-            self._keys=keys
-            self._f=f
-            self._new_mapping=new_mapping
-            self._multi=multi
-            self._table=table
+            self._type = type
+            self._keys = keys
+            self._f = f
+            self._new_mapping = new_mapping
+            self._table = table
+
         def run(self):
             if self._type == 'map':
                 for key in self._keys:
                     for value in self._table._mapping[key]:
-                        self._table._build_mr_task(key, value, self._f, self._new_mapping, self._multi)
+                        self._table._build_mr_task(key, value, self._f, self._new_mapping)
             elif self._type == 'reduce':
                 for key in self._keys:
-                    self._table._build_mr_task(key, self._table._mapping[key], self._f, self._new_mapping, self._multi)
+                    self._table._build_mr_task(key, self._table._mapping[key], self._f, self._new_mapping)
             else:
                 print("error code 62786289629")
-    def _melt_mappings(self,mappings):
-        melted_mapping=dict()
+
+    def _melt_mappings(self, mappings):
+        melted_mapping = dict()
         for mapping in mappings:
             for key in mapping:
                 if key in melted_mapping:
@@ -1679,174 +1972,119 @@ class Table:
                 else:
                     melted_mapping[key] = mapping[key][:]
         return melted_mapping
-    def _perform_map_or_reduce(self,type, f, multi, threads):
+
+    def _perform_map_or_reduce(self, type, f, threads):
         new_mappings = [{} for _ in range(threads)]
-        keys = list(self.getMapping().keys()) # _init_mapping() ran during getMapping
-        threads = min(threads,len(keys))
+        keys = list(self.getMapping().keys())  # _init_mapping() ran during getMapping
+        threads = min(threads, len(keys))
         keys_parts = [[] for _ in range(threads)]
         for i in range(len(keys)):
-            keys_parts[i%threads].append(keys[i])
+            keys_parts[i % threads].append(keys[i])
         threads_list = list()
         for i in range(threads):
-            threads_list.append(self._MRThread(type, keys_parts[i], f, new_mappings[i], multi, self))
+            threads_list.append(self._MRThread(type, keys_parts[i], f, new_mappings[i], self))
         for thread in threads_list:
             thread.start()
         for thread in threads_list:
             thread.join()
         self._mapping = self._melt_mappings(new_mappings)
-    def map(self, f, multi=False, threads=multiprocessing.cpu_count()):
+
+    def map(self, f, threads=multiprocessing.cpu_count()):
         """
         f du type lambda key value : return (key, value)
         :return: self (to chain)
         """
-        self._perform_map_or_reduce('map', f, multi, threads)
+        self._perform_map_or_reduce('map', f, threads)
         return self
 
-    def reduce(self, f, multi=False, threads=multiprocessing.cpu_count()):
+    def reduce(self, f, threads=multiprocessing.cpu_count()):
         """
         f : lambda key, values_list : key, value
         :param f:
         :return: self (to chain)
         """
-        self._perform_map_or_reduce('reduce', f, multi, threads)
+        self._perform_map_or_reduce('reduce', f, threads)
         return self
 
+
+def flatten_n_times(n, l):
+    n = int(n)
+    for _ in range(n):
+        if any(type(elem) is list for elem in l):
+            res = []
+            for elem in l:
+                res += elem if type(elem) is list else [elem]
+            l = res
+    return l
+
+
 def _get_data(path):
-        return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path)
+    return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path)
+
 
 def get_sample(id):
-    dic = {'xyz' : "phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"
-        ,'charges':'CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel','surfaces':'ek_InTP_CO2_Me_4_graphene_W_r2_k.dat'}
+    dic = {'xyz': "phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz",
+           'charges': 'CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel',
+           'surfaces': 'ek_InTP_CO2_Me_4_graphene_W_r2_k.dat',
+           'adults': 'adult.txt'}
     if id == 'xyz':
-        return Table(_get_data(dic[id]))
+        return Table(Table(_get_data(dic[id]), columnNames=['rien', 'atom', 'x', 'y', 'z'],
+                           lastLine=494)['atom', 'x', 'y', 'z'],
+                     columnNames=['atom', 'x', 'y', 'z'])
     elif id == 'charges':
-        return Table([line[1:] for line in Table(_get_data(dic[id]))])
+        res = Table(Table(_get_data(dic[id]), header=1, lastLine=494)['s', 'p', 'd'], columnNames=['s', 'p', 'd'])
+        return res
     elif id == 'surfaces':
-        return Table([line[1:] for line in Table(_get_data(dic[id]))])
+        return Table(_get_data(dic[id]))
+    elif id == 'adults':
+        return Table(_get_data(dic[id]), header=0, delimiter=',', lastLine=100)
+
 
 def run_example():
-
     # os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path)
 
-    source = """print("Few Examples Of Scimple Plots :), are they well displayed ? \SOURCE :" + source)
-    # example :
-    moleculeTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=3, lastLine=103)
-    grapheneTable = Table(get_data("phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz"), firstLine=104, lastLine=495)
-    chargesGraphene = Table(get_data("CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel"), firstLine=104, lastLine=495)
-
-    # print(moleculeTable)
-
-    # 3D delta et molec
-    def f(lineNum, line):
-        # print(sum(chargesGraphene.getTable()[lineNum][1:]) - 4)
-        # print(line)
-        # print(chargesGraphene.getTable()[lineNum])
-        # print(2)
-        return sum(chargesGraphene.getTable()[lineNum][1:]) - 4
-
-    myPlot3D = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", borders=[-40, 40, -40, 40, 15, 30],
-                    title="Test Graphe #3D delta et molec")
-    myPlot3D.add(moleculeTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, coloredBy=1)
-    myPlot3D.add(grapheneTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, label="graphene",
-                 coloredBy=f)
-    # 3D comparatif z et delta:
-
-    myPlot3Dbis = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", borders=[-40, 40, -40, 40, 15, 30],
-                       title="Test Graphe #3D comparatif z et delta:")
-    myPlot3Dbis.add([grapheneTable.getTable()[i][:4] + [grapheneTable.getTable()[i][4] + 10] for i in
-                     range(len(grapheneTable.getTable()) - 1)], xColNum=2, yColNum=3, zColNum=4, label="colored by z",
-                    coloredBy=lambda lineNum, line: line[4])
-    myPlot3Dbis.add(grapheneTable, xColNum=2, yColNum=3, zColNum=4, label="colored by delta",
-                    coloredBy=lambda lineNum, line: (sum(chargesGraphene.getTable()[lineNum][1:]) - 4))
-
-    # 2D:
-
-    myPlot2D = Plot(dim=2, xlabel="X", zlabel="Z", borders=[-20, 20, 18, 19], title="Test Graphe 2D")
-    myPlot2D.add(grapheneTable, xColNum=3, yColNum=4, label="graphene Y/Z", coloredBy="#f4a28c", markersize=20)
-    myPlot2D.add(grapheneTable, xColNum=2, yColNum=4, label="graphene X/Z", plotType='-')
-
-    # 3D plot 2 surfaces:
-
-    myTable = Table(get_data("ek_InTP_CO2_Me_4_graphene_W_r2_k.dat"), firstLine=1)
-    myPlot3Dter = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", title="deux surfaces, point de weyl ?")
-    myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=4, label="column 4", coloredBy="#000000")
-    myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=5, label="column 5")
-    showAndBlock()"""
+    source = """
+import scimple as scm
+tab = scm.Table(scm.get_sample('xyz'),firstLine=2,lastLine=494) # 
+charges = scm.Table(scm.get_sample('charges'),firstLine=1)
+scm.Plot(3,bg_color='#ddddff')\
+.add(tab[101:],1,2,3,markersize=4,plotType='o',coloredBy =lambda i,_:sum(charges[101+i]))\
+.add(tab[:101],1,2,3,markersize=4,plotType='o',coloredBy =0)
+scm.Plot(2,bg_color='#cccccc')\
+.add(tab[:101],1,2,coloredBy=0)\
+.add(tab[101:],1,2,markersize=4,plotType='x',coloredBy =lambda i,_:sum(charges[101+i]))
+scm.Plot(2,bg_color='#cccccc', xlabel="x axis", ylabel="y axis")\
+.add(tab[101:],1,2,markersize=6,plotType='o',coloredBy =lambda _,line:line[3], colorLabel="z axis")\
+.add(tab[101:],1,2,markersize=4,plotType='x',coloredBy =lambda i,_:sum(charges[101+i]), colorLabel="external electrons")
+scm.Plot(2,bg_color='#cccccc', xlabel="atom", ylabel="z axis")\
+.add(tab,0,3,markersize=6,plotType='o',coloredBy = 0, colorLabel="z axis")\
+#scm.show()"""
     print("Few Examples Of Scimple Plots :), are they well displayed ? \SOURCE :" + source)
     # example :
-    moleculeTable = Table(get_sample('xyz'), firstLine=3, lastLine=103)
-    grapheneTable = Table(get_sample('xyz'), firstLine=104, lastLine=495)
-    chargesGraphene = Table(get_sample('charge'), firstLine=104, lastLine=495)
 
-    # print(moleculeTable)
-
-    # 3D delta et molec
-    def f(lineNum, line):
-        # print(sum(chargesGraphene.getTable()[lineNum][1:]) - 4)
-        # print(line)
-        # print(chargesGraphene.getTable()[lineNum])
-        # print(2)
-        return sum(chargesGraphene.getTable()[lineNum][1:]) - 4
-
-    myPlot3D = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", borders=[-40, 40, -40, 40, 15, 30],
-                    title="Test Graphe #3D delta et molec")
-    myPlot3D.add(moleculeTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, coloredBy=1)
-    myPlot3D.add(grapheneTable, xColNum=2, yColNum=3, zColNum=4, markersize=2, label="graphene",
-                 coloredBy=f)
-    """EN TESTS :
-    #3D molec avec couleurs standards
-    dicoCouleursStandards={'C':"#000000",'H':"#ffffff",'O':'r','N':'b','Fe':"#00ffff"}
-    myPlot3D=Plot(dim=3,xlabel="X",ylabel="Y",zlabel="Z",borders=[-40,40,-40,40,15,30],title="Test Graphe #3D molec avec couleurs standards")
-    myPlot3D.add(molecTable,xColNum=2,yColNum=3,zColNum=4,coloredBy=lambda lineNum,line:dicoCouleursStandards[line[1]])
-    """
-    # 3D comparatif z et delta:
-
-    myPlot3Dbis = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", borders=[-40, 40, -40, 40, 15, 30],
-                       title="Test Graphe #3D comparatif z et delta:")
-    myPlot3Dbis.add([grapheneTable.getTable()[i][:4] + [grapheneTable.getTable()[i][4] + 10] for i in
-                     range(len(grapheneTable.getTable()) - 1)], xColNum=2, yColNum=3, zColNum=4, label="colored by z",
-                    coloredBy=lambda lineNum, line: line[4])
-    myPlot3Dbis.add(grapheneTable, xColNum=2, yColNum=3, zColNum=4, label="colored by delta",
-                    coloredBy=lambda lineNum, line: (sum(chargesGraphene.getTable()[lineNum][1:]) - 4))
-
-    # 2D:
-
-    myPlot2D = Plot(dim=2, xlabel="X", zlabel="Z", borders=[-20, 20, 18, 19], title="Test Graphe 2D")
-    myPlot2D.add(grapheneTable, xColNum=3, yColNum=4, label="graphene Y/Z", coloredBy="#f4a28c", markersize=20)
-    myPlot2D.add(grapheneTable, xColNum=2, yColNum=4, label="graphene X/Z", plotType='-')
-
-    # 3D plot 2 surfaces:
-
-    myTable = Table(get_data("ek_InTP_CO2_Me_4_graphene_W_r2_k.dat"), firstLine=1)
-    myPlot3Dter = Plot(dim=3, xlabel="X", ylabel="Y", zlabel="Z", title="deux surfaces, point de weyl ?")
-    myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=4, label="column 4", coloredBy="#000000")
-    myPlot3Dter.add(myTable, xColNum=0, yColNum=1, zColNum=5, label="column 5")
+    tab = Table(get_sample('xyz'), firstLine=2, lastLine=494)  #
+    # print(np.array(tab.map(lambda i, line: ('line '+str(i)+':',line)).getMappingAsTable(2)))
+    charges = Table(get_sample('charges'), firstLine=1)
+    Plot(3, bg_color='#ddddff') \
+        .add(tab, 1, 2, 3, firstLine=101, markersize=4, plotType='o', coloredBy=lambda i, _: sum(charges[i])) \
+        .add(tab, 1, 2, 3, lastLine=100
+             , markersize=4, plotType='o', coloredBy=0)
+    Plot(2, bg_color='#cccccc') \
+        .add(tab, 1, 2, lastLine=100, coloredBy=0) \
+        .add(tab, 1, 2, firstLine=101, markersize=4, plotType='x', coloredBy=lambda i, _: sum(charges[i]))
+    Plot(2, bg_color='#cccccc', xlabel="x axis", ylabel="y axis") \
+        .add(tab, 1, 2, firstLine=101, markersize=6, plotType='o', coloredBy=lambda _, line: line[3],
+             colorLabel="z axis") \
+        .add(tab, 1, 2, firstLine=101, markersize=4, plotType='x', coloredBy=lambda i, _: sum(charges[i]),
+             colorLabel="external electrons")
+    Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis") \
+        .add(tab, 0, 3, markersize=6, plotType='o', coloredBy=0, colorLabel="z axis") \
+        # show()
     showAndBlock()
 
 
 if __name__ == '__main__':
-    # print(help(Table))
-    # print(help(Plot))
-    # run_example()
-
-    tab = Table(get_sample('xyz'), firstLine=2, lastLine=494,columnNames=['rien','name','x','y']).keep_columns('name', 'x', 'y', 5)
-
-    # print(tab.getMapping())
-    # tab.map(lambda lineNum, line: (line[1], line[4])) \
-    #     .map(lambda key, value: (key, value + 2)) \
-    #     .reduce(lambda key, values_list: (key, sum(values_list) / len(values_list))) \
-    #     .map(lambda key, value: (len(key),1)) \
-    #     .reduce(lambda key, values_list: (key,sum(values_list)))
-
-    # tab.map(lambda lineNum, line: (line[1],1)) \
-    #     .reduce(lambda key, values_list: [(key, sum(values_list))] if isinstance(key,str) else [], multi=True)
-    # print(tab.getMapping())
-    # print(tab.getMappingAsTable(True))
-    # tab = Table(tab.getMappingAsTable(True), delimiter=';')
-    # print(tab.getString())
-    # tab.append({"fin de file"})
-    #tab2 = tab.append(["test"]).save('out.txt',delimiter=r'\t\t\t')
-    # tab2 = tab.getCopy()
-    # print(tab.pop())
-    # print(tab2, tab)
-    # print(Table("14 41546 ej;\t zkozf 45 64   ",newLine=r'\t').getString(),Table("14 41546 ej;\n zkozf 45 64   ",newLine='\\n').getTable())
+    run_example()
+    # data = get_sample('adults')
+    # print(data)
+    # print(data.get_columns_names())
