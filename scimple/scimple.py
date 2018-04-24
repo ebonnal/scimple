@@ -1439,11 +1439,18 @@ def showAndBlock():
     plt.show(block=True)
 
 class Line:
-    def __init__(self,line,columnNames=None, delimiter = None):
+    def __init__(self,line,columnNames=None, delimiter = r'(\t|[ ])+'):
         self._columnNames = columnNames
-        self._line = line
+        self._line = list(line)
         self._delimiter = delimiter
         self._contentAsString = ""  # string
+        if isinstance(line, Line):
+            columnNames = list(line.get_columns_names().keys())
+        if columnNames is None or len(columnNames) == 0:
+            self._columnNames = {}
+        else:
+            self._columnNames = {columnNames[i]: i for i in range(len(columnNames))}  # list
+
     def __contains__(self, elem_to_find):
         return elem_to_find in self._list
 
@@ -1515,7 +1522,7 @@ class Line:
             popped = self.getLine(columns)
             self._filter_by_columns_del_keep('del', columns)
         elif type(columns) is tuple:
-            popped = self.getTable(columns)
+            popped = self.getLine(columns)
             self._filter_by_columns_del_keep('del', columns)
         return popped
     def get_columns_names(self):
@@ -1541,16 +1548,15 @@ class Line:
         else:
             columns = columns_num_tuple
         columns = self._from_col_name_to_int(columns)
-        for line in self:
-            i = 0
-            j = 0
-            while i < len(line):
-                if (del_or_keep == 'del' and i in columns) or (del_or_keep == 'keep' and i not in columns):
-                    del line[j]
-                    i += 1
-                else:
-                    j += 1
-                    i += 1
+        i = 0
+        j = 0
+        while i < len(self.getLine()):
+            if (del_or_keep == 'del' and i in columns) or (del_or_keep == 'keep' and i not in columns):
+                del self.getLine()[j]
+                i += 1
+            else:
+                j += 1
+                i += 1
         i = 0
         j = 0
         new_columns_names = dict()
@@ -1586,7 +1592,7 @@ class Line:
         if delimiter == r'(\t|[ ])+':
             delimiter = ','
         delimiter = delimiter.replace("\\n", "\n").replace("\\t", "\t")
-        self._contentAsString = delimiter.join([str(elem) for elem in line])
+        self._contentAsString = delimiter.join([str(elem) for elem in self.getLine()])
 
         return self._contentAsString
 
@@ -1626,7 +1632,10 @@ class Table:
         # import file
         if isinstance(path, Table):
             columnNames = list(path.get_columns_names().keys())
-            self._floatTable = copy.deepcopy(path[max(0, firstLine):lastLine + 1] if lastLine
+            if firstLine == 1 and lastLine is None:
+                self._floatTable
+            else:
+                self._floatTable = copy.deepcopy(path[max(0, firstLine):lastLine + 1] if lastLine
                                              else path[max(0, firstLine):])
         elif type(path) is not str:
             try:
@@ -2084,7 +2093,10 @@ scm.Plot(2,bg_color='#cccccc', xlabel="atom", ylabel="z axis")\
 
 
 if __name__ == '__main__':
-    run_example()
+    #run_example()
     # data = get_sample('adults')
     # print(data)
     # print(data.get_columns_names())
+    l = Line(Line([1, 2, 4, 45, 64, 'jkgh'], columnNames=['a','b','c','d','e','f'])['b','d',1,2,3,4,5,6],columnNames=['b','d'])
+    print(l.pop('d'))
+    print(l.getLine())
