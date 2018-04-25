@@ -2041,7 +2041,8 @@ def get_sample(id):
                            lastLine=494)['atom', 'x', 'y', 'z'],
                      columnNames=['atom', 'x', 'y', 'z'])
     elif id == 'charges':
-        res = Table(Table(_get_data(dic[id]), header=1, lastLine=494)['s', 'p', 'd'], columnNames=['s', 'p', 'd'])
+        res = Table(Table(_get_data(dic[id]), header=1, lastLine=494)['s', 'p', 'd'],firstLine=1, columnNames=['s', 'p', 'd'])
+        print(584897897,res.getTable())
         return res
     elif id == 'surfaces':
         return Table(_get_data(dic[id]))
@@ -2073,8 +2074,9 @@ scm.Plot(2,bg_color='#cccccc', xlabel="atom", ylabel="z axis")\
 
     tab = Table(get_sample('xyz'), firstLine=2, lastLine=494)  #
     # print(np.array(tab.map(lambda i, line: ('line '+str(i)+':',line)).getMappingAsTable(2)))
-    charges = Table(get_sample('charges'), firstLine=1)
-    Plot(3, bg_color='#ddddff') \
+    charges = Table(get_sample('charges'))
+    print(charges)
+    Plot(3,zlabel='z', bg_color='#ddddff') \
         .add(tab, 1, 2, 3, firstLine=101, markersize=4, plotType='o', coloredBy=lambda i, _: sum(charges[i])) \
         .add(tab, 1, 2, 3, lastLine=100
              , markersize=4, plotType='o', coloredBy=0)
@@ -2093,10 +2095,13 @@ scm.Plot(2,bg_color='#cccccc', xlabel="atom", ylabel="z axis")\
 
 
 if __name__ == '__main__':
-    #run_example()
+    run_example()
     # data = get_sample('adults')
-    # print(data)
     # print(data.get_columns_names())
-    l = Line(Line([1, 2, 4, 45, 64, 'jkgh'], columnNames=['a','b','c','d','e','f'])['b','d',1,2,3,4,5,6],columnNames=['b','d'])
-    print(l.pop('d'))
-    print(l.getLine())
+    # data['age']=[500]
+    # print(data['age'])
+    # # print(data)
+    # # print(data.get_columns_names())
+    # l = Line(Line([1, 2, 4, 45, 64, 'jkgh'], columnNames=['a','b','c','d','e','f'])['b','d',1,2,3,4,5,6],columnNames=['b','d'])
+    # print(l.pop('d'))
+    # print(l.getLine())
