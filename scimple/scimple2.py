@@ -1,12 +1,13 @@
-from __future__ import absolute_import
-
+"""
+SCIMPLE, Parse and Plot scimply in 2 lines
+Maintainer: enzobonnal@gmail.com
+"""
 import collections
 import copy
 import multiprocessing
 import os
-from random import randint
+import random
 from threading import Thread
-
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
@@ -17,10 +18,21 @@ _ = Axes3D
 
 
 class ScimpleError(Exception):
+    """module specific Errors"""
     pass
 
 
 def type_value_checks(x, type=None, good_values=None, type_message='', value_message=''):
+    """
+
+    :param x: any
+    :param type: type or sequence of type
+    :param good_values: (callable :type(x) -> bool) or sequence of any
+    :param type_message: str
+    :param value_message:str
+    :return: nothing,
+    :raises: ValueError or TypeError
+    """
     if type is not None:
         if not isinstance(x, type):
             raise TypeError(type_message)
@@ -35,11 +47,53 @@ def type_value_checks(x, type=None, good_values=None, type_message='', value_mes
             return ValueError("good_values must be either a callable or a sequence")
 
 
+def is_2d_array_like_not_empty(array):
+    """
+
+    :param array: potential 2d array
+    :return: bool
+    """
+    not_empty = False
+    try:
+        if len(array) == 0: return False
+        for line in array:
+            for elem in line:
+                not_empty = True
+    except TypeError as e:
+        return False
+    return not_empty
+
+def is_hexa_color(color):
+    """
+    check if color is a valid color code like : '#457ef8'
+    :param color: str
+    :return: bool
+    """
+    if len(color) != 7:
+        return False
+    if color[0] != '#':
+        return False
+    try:
+        int('0x' + color[1:], 0)
+        return True
+    except ValueError:
+        return False
+
 class Plot:
     _gs = gridspec.GridSpec(2, 2, width_ratios=[50, 1], height_ratios=[1, 50])
     plt.rcParams['lines.color'] = 'b'
 
     def __init__(self, dim=2, title=None, xlabel=None, ylabel=None, zlabel=None, borders=None, bg_color=None):
+        """
+
+        :param dim: 2 or 3
+        :param title: str
+        :param xlabel: str
+        :param ylabel: str
+        :param zlabel: str, do not set if dim is not 3 !
+        :param borders: sequence of int of length dim*2, settings axes limits
+        :param bg_color: a valid color code str
+        """
         self._at_least_one_label_defined = False
         self._color_bar_nb = 0
         self._fig = plt.figure()
@@ -74,49 +128,62 @@ class Plot:
                               value_message="zlabel is only settable on 3D plots")
             self._ax.set_zlabel(zlabel)
         if bg_color is not None:
-            type_value_checks(bg_color, type=str, good_values=self.is_hexa_color,
+            type_value_checks(bg_color, type=str, good_values=is_hexa_color,
                               type_message="bg_color must be of type str",
                               value_message="bg_color_must be a valid hexadecimal color code, example : '#ff45ab'")
             self._ax.set_facecolor(bg_color)
 
     @staticmethod
-    def is_hexa_color(color):
-        if len(color) != 7:
-            return False
-        if color[0] != '#':
-            return False
-        try:
-            int('0x' + color[1:], 0)
-            return True
-        except ValueError:
-            return False
+    def _mult_array_mapped(l, f):
+        """
+
+        :param l: list
+        :param f: function: elem of l --> float/int
+        :return: product of the
+        """
+        res = f(l[0])
+        for i in range(1, len(l)):
+            res *= f(l[i])
+        return res
 
     @staticmethod
-    def _random_color_well_dispatched(racinecubiquesup, pas):
-        R = hex(randint(0, racinecubiquesup - 1) * pas)[2:]
-        if len(R) == 1:
-            R = "0" + R
-        G = hex(randint(0, racinecubiquesup - 1) * pas)[2:]
-        if len(G) == 1:
-            G = "0" + G
-        B = hex(randint(0, racinecubiquesup - 1) * pas)[2:]
-        if len(B) == 1:
-            B = "0" + B
-        while R == B and R == G:
+    def _random_color_well_dispatched(n):
+        """
 
-            R = hex(randint(0, racinecubiquesup - 1) * pas)[2:]
-            if len(R) == 1:
-                R = "0" + R
-            G = hex(randint(0, racinecubiquesup - 1) * pas)[2:]
-            if len(G) == 1:
-                G = "0" + G
-            B = hex(randint(0, racinecubiquesup - 1) * pas)[2:]
-            if len(B) == 1:
-                B = "0" + B
-        return "#" + R + G + B
+        :param n: number of color code well dispatched needed
+        :return: list of color codes
+        """
+        pas = [1, 1, 1]
+        while Plot._mult_array_plus_one(pas, lambda x: x+1) < n + 2 + (0 if pas[0] != pas[1] or pas[0] != pas[2] else pas[0] - 1):
+            index_of_pas_min = pas.index(min(pas))
+            pas[index_of_pas_min] += 1
+
+        print(pas)
+        colors = []
+        for r in range(pas[0] + 1):
+            for v in range(pas[1] + 1):
+                for b in range(pas[2] + 1):
+                    if not ((r == pas[0] and v == pas[1] and b == pas[2]) or (r == v == b == 0)):
+                        if not (pas[0] == pas[1] == pas[2]) or not r == v == b:
+                            colors.append([r, v, b])
+        for i in range(len(colors)):
+            color = colors[i]
+            for j in range(3):
+                color[j] = hex(int(255 / pas[j]) * color[j])[2:]
+                if len(color[j]) == 1:
+                    color[j] = '0' + color[j]
+            colors[i] = '#' + ''.join(color)
+        return random.sample(colors, n)
 
     @staticmethod
     def _pastelize(color, coef_pastel=2, coef_fonce=0.75):
+        """
+
+        :param color: color code
+        :param coef_pastel: merge les r v b
+        :param coef_fonce: alpha coef
+        :return: color code pastellized
+        """
         if color[0] != '#':
             color = '#' + color
         colors = [int('0x' + color[1:3], 0), int('0x' + color[3:5], 0), int('0x' + color[5:7], 0)]
@@ -147,21 +214,33 @@ class Plot:
             color_bar_subplot.set_xlabel(color_label)
             color_bar_subplot.xaxis.tick_top()
 
-    def add(self, table, x_col_num, y_col_num, z_col_num=None, first_line=0, last_line=None, label="", colored_by=None,
-            color_label='', plot_type='o', markersize=9):
+    @staticmethod
+    def _coloring_mode(coloredBy):
+        """
+
+        :param coloredBy: argument given to Plot.add()
+        :return: str describing the mode, one of the following :
+                'column_index', 'color_code', 'function_float', 'function_color_code'
+                or None if no mode match
+        """
+
+
+    def add(self, table, x, y, z=None, first_line=0, last_line=None, label="", colored_by=None,
+            color_bar_label='', plot_type='o', markersize=9):
+
         if last_line is None:
             last_line = len(table) - 1
         if self._dim == 2:
-            if z_col_num != None:
+            if z != None:
                 print("S_c_i_m_p_l_e E_r_r_o_r : z column declaration for 2D plot forbidden")
                 raise Exception()
             if label != "":
                 self._at_least_one_label_defined = True
             X, Y = [], []
             for line_index in range(first_line, min(last_line + 1, len(table))):
-                if len(table[line_index]) > max(x_col_num, y_col_num):
-                    X.append(table[line_index][x_col_num])
-                    Y.append(table[line_index][y_col_num])
+                if len(table[line_index]) > max(x, y):
+                    X.append(table[line_index][x])
+                    Y.append(table[line_index][y])
             if colored_by != None:
                 if type(colored_by) is str:
                     plt.plot(X, Y, plot_type, label=label, color=colored_by, markersize=markersize)
@@ -184,12 +263,12 @@ class Plot:
                         table = groups_dic[group]
                         X, Y = [], []
                         for line_index in range(first_line, min(last_line + 1, len(table))):
-                            if len(table[line_index]) > max(x_col_num, y_col_num):
-                                X.append(table[line_index][x_col_num])
-                                Y.append(table[line_index][y_col_num])
-                        group_color = _random_color_well_dispatched(racinecubiquesup, pas)
+                            if len(table[line_index]) > max(x, y):
+                                X.append(table[line_index][x])
+                                Y.append(table[line_index][y])
+                        group_color = self._random_color_well_dispatched(racinecubiquesup, pas)
                         while group_color in list_of_used_colors:
-                            group_color = _random_color_well_dispatched(racinecubiquesup, pas)
+                            group_color = self._random_color_well_dispatched(racinecubiquesup, pas)
                         list_of_used_colors.append(group_color)
 
                         self._ax.plot(X, Y, plot_type, label=str(group), color=self._pastelize(group_color),
@@ -212,13 +291,13 @@ class Plot:
                             mini = min(mini, value)
                         except:
                             print(454545)
-                    self._print_color_bar(color_label, mini, maxi)
+                    self._print_color_bar(color_bar_label, mini, maxi)
 
                     if label != "":
                         self._at_least_one_label_defined = True
                     color_dico = {}  # hexa -> plotable lines
                     for line_index in range(first_line, min(last_line + 1, len(table))):
-                        if len(table[line_index]) > max(x_col_num, y_col_num):
+                        if len(table[line_index]) > max(x, y):
                             color_res = colored_by(line_index, table[line_index])
                             deux = color_res - mini
                             maxolo = max(0, deux)
@@ -228,10 +307,10 @@ class Plot:
                                 color_hexa_unit = "0" + color_hexa_unit
                             color = "#" + color_hexa_unit * 3 if self._color_bar_nb == 1 else "#ff" + color_hexa_unit + "00"
                             if color in color_dico:
-                                color_dico[color][0] += [table[line_index][x_col_num]]
-                                color_dico[color][1] += [table[line_index][y_col_num]]
+                                color_dico[color][0] += [table[line_index][x]]
+                                color_dico[color][1] += [table[line_index][y]]
                             else:
-                                color_dico[color] = [[table[line_index][x_col_num]], [table[line_index][y_col_num]]]
+                                color_dico[color] = [[table[line_index][x]], [table[line_index][y]]]
 
                     legend_on = True
                     for color_group in color_dico:
@@ -248,7 +327,7 @@ class Plot:
                 self._ax.legend(loc='upper right', shadow=True).draggable()
 
         else:
-            if z_col_num is None:
+            if z is None:
                 print("S_c_i_m_p_l_e E_r_r_o_r : z column declaration required for 3D plot")
                 raise Exception()
             if type(colored_by) == int:  # I_n_t C_o_l_n_u_m
@@ -270,13 +349,13 @@ class Plot:
                     table = groups_dic[group]
                     X, Y, Z = [], [], []
                     for line_index in range(first_line, min(last_line + 1, len(table))):
-                        if len(table[line_index]) > max(x_col_num, y_col_num, z_col_num):
-                            X.append(table[line_index][x_col_num])
-                            Y.append(table[line_index][y_col_num])
-                            Z.append(table[line_index][z_col_num])
-                    group_color = _random_color_well_dispatched(racinecubiquesup, pas)
+                        if len(table[line_index]) > max(x, y, z):
+                            X.append(table[line_index][x])
+                            Y.append(table[line_index][y])
+                            Z.append(table[line_index][z])
+                    group_color = self._random_color_well_dispatched(racinecubiquesup, pas)
                     while group_color in list_of_used_colors:
-                        group_color = _random_color_well_dispatched(racinecubiquesup, pas)
+                        group_color = self._random_color_well_dispatched(racinecubiquesup, pas)
                     list_of_used_colors.append(group_color)
                     self._ax.plot(X, Y, Z, plot_type, label=str(group), color=self._pastelize(group_color),
                                   markersize=markersize)
@@ -297,13 +376,13 @@ class Plot:
                         mini = min(mini, value)
                     except:
                         print(454545)
-                self._print_color_bar(color_label, mini, maxi)
+                self._print_color_bar(color_bar_label, mini, maxi)
 
                 if label != "":
                     self._at_least_one_label_defined = True
                 color_dico = {}  # hexa -> plotable lines
                 for line_index in range(first_line, min(last_line + 1, len(table))):
-                    if len(table[line_index]) > max(x_col_num, y_col_num, z_col_num):
+                    if len(table[line_index]) > max(x, y, z):
                         color_res = colored_by(line_index, table[line_index])
                         deux = color_res - mini
                         maxolo = max(0, deux)
@@ -313,12 +392,12 @@ class Plot:
                             color_hexa_unit = "0" + color_hexa_unit
                         color = "#" + color_hexa_unit * 3 if self._color_bar_nb == 1 else "#ff" + color_hexa_unit + "00"
                         if color in color_dico:
-                            color_dico[color][0] += [table[line_index][x_col_num]]
-                            color_dico[color][1] += [table[line_index][y_col_num]]
-                            color_dico[color][2] += [table[line_index][z_col_num]]
+                            color_dico[color][0] += [table[line_index][x]]
+                            color_dico[color][1] += [table[line_index][y]]
+                            color_dico[color][2] += [table[line_index][z]]
                         else:
-                            color_dico[color] = [[table[line_index][x_col_num]], [table[line_index][y_col_num]],
-                                                 [table[line_index][z_col_num]]]
+                            color_dico[color] = [[table[line_index][x]], [table[line_index][y]],
+                                                 [table[line_index][z]]]
 
                 legend_on = True
                 for color_group in color_dico:
@@ -333,10 +412,10 @@ class Plot:
                     self._at_least_one_label_defined = True
                 X, Y, Z = [], [], []
                 for line_index in range(first_line, min(last_line + 1, len(table))):
-                    if len(table[line_index]) > max(x_col_num, y_col_num, z_col_num):
-                        X.append(table[line_index][x_col_num])
-                        Y.append(table[line_index][y_col_num])
-                        Z.append(table[line_index][z_col_num])
+                    if len(table[line_index]) > max(x, y, z):
+                        X.append(table[line_index][x])
+                        Y.append(table[line_index][y])
+                        Z.append(table[line_index][z])
                 if colored_by != None:
                     self._ax.plot(X, Y, Z, plot_type, label=label, color=colored_by, markersize=markersize)
                 else:
@@ -931,16 +1010,16 @@ scm.Plot(2,bg_color='#cccccc', xlabel="atom", ylabel="z axis").add(tab,0,3,marke
                                                                                 colored_by=lambda i, _: sum(charges[i]))
     Plot(2, bg_color='#cccccc', xlabel="x axis", ylabel="y axis").add(tab, 1, 2, first_line=101, markersize=6,
                                                                       plot_type='o', colored_by=lambda _, line: line[3],
-                                                                      color_label="z axis").add(tab, 1, 2,
-                                                                                                first_line=101,
-                                                                                                markersize=4,
-                                                                                                plot_type='x',
-                                                                                                colored_by=lambda i,
+                                                                      color_bar_label="z axis").add(tab, 1, 2,
+                                                                                                    first_line=101,
+                                                                                                    markersize=4,
+                                                                                                    plot_type='x',
+                                                                                                    colored_by=lambda i,
                                                                                                                   _: sum(
                                                                                                     charges[i]),
-                                                                                                color_label="external electrons")
+                                                                                                    color_bar_label="external electrons")
     Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis").add(tab, 0, 3, markersize=6, plot_type='o',
-                                                                    colored_by=0, color_label="z axis")  # show()
+                                                                    colored_by=0, color_bar_label="z axis")  # show()
     show_and_block()
 
 

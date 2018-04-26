@@ -1131,6 +1131,7 @@ warnings.filterwarnings("ignore")
 
 
 def randomColor(racinecubiquesup, pas):
+
     R = hex(randint(0, racinecubiquesup - 1) * pas)[2:]
     if len(R) == 1:
         R = "0" + R
