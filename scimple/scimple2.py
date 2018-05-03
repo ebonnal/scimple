@@ -34,18 +34,30 @@ class ScimpleError(Exception):
 
 FuncType = type(lambda x: None)
 NoneType = type(None)
+inf = float('inf')
 
+# #####
+# TOOLS
+# #####
+def flatten_n_times(n, l):
+    n = int(n)
+    for _ in range(n):
+        if any(type(elem) is list for elem in l):
+            res = []
+            for elem in l:
+                res += elem if type(elem) is list else [elem]
+            l = res
+    return l
 
 # #####
 # PLOTS TOOLS
 # #####
-
 def xgrid(a, b, p):
-    return flatten_n_times(1, [[i] * math.ceil((b - a) / p) for i in range(a, b, p)])
+    return list(flatten_n_times(1, [[i] * math.ceil((b - a) / p) for i in np.arange(a, b, p)]))
 
 
 def ygrid(a, b, p):
-    return flatten_n_times(1, [[i for i in range(a, b, p)] for _ in range(a, b, p)])
+    return list(flatten_n_times(1, [[i for i in np.arange(a, b, p)] for _ in np.arange(a, b, p)]))
 
 
 # #####
@@ -159,7 +171,7 @@ def random_color_well_dispatched(n):
     :return: list of n color codes well dispatched
     """
     pas = [1, 1, 1]
-    while Plot._mult_array_mapped(pas, lambda x: x + 1) < n + 2 + (
+    while mult_array_mapped(pas, lambda x: x + 1) < n + 2 + (
             0 if pas[0] != pas[1] or pas[0] != pas[2] else pas[0] - 1):
         index_of_pas_min = pas.index(min(pas))
         pas[index_of_pas_min] += 1
@@ -210,6 +222,7 @@ class Plot:
     _cm_color_code = 'color_code'
     _cm_function_float = 'function_float'
     _cm_function_color_code = 'function_color_code'
+    _cm_function_str = 'function_str'
 
     def __init__(self, dim=2, title=None, xlabel=None, ylabel=None, zlabel=None, borders=None, bg_color=None):
         """
@@ -303,8 +316,9 @@ class Plot:
         :param colored_by: argument given to Plot.add()
         :return: str describing the mode, one of the following :
                 'column_index', 'column_name', 'color_code', 'function_float', 'function_color_code'
-                or None if no mode match
+                'function_str' or None if no mode match
         """
+        print(25, colored_by, nb_params(colored_by) if type(colored_by) is FuncType else None)
         if type(colored_by) is int:
             return Plot._cm_column_index
         if is_color_code(colored_by):
@@ -315,10 +329,15 @@ class Plot:
             if nb_params(colored_by) != 2:
                 return None
             res = colored_by(test_index, xyz_tuple)
-            if type(res) in {int, float}:
+            try:
+                float(res)
                 return Plot._cm_function_float
+            except ValueError:
+                pass
             if is_color_code(res):
                 return Plot._cm_function_color_code
+            if type(res) is str:
+                return Plot._cm_function_str
         return None
 
     def add(self, table=None, x=None, y=None, z=None, first_line=0, last_line=None,
@@ -350,7 +369,8 @@ class Plot:
             int : last row (included) to be considered in table (indexing starts at 0)
         :param label:
             None
-            label of the plot
+            str : label of the plot
+            dict : {color_code color : str label}
         :param colored_by:
             None
             str : describing the mode, one of the following :
@@ -359,10 +379,7 @@ class Plot:
                 str : column_name
                 function int : index, tuple : xyz_tuple ->float/int
                 function int : index, tuple : xyz_tuple ->(color_code, str_label)
-        :param color_bar_label:
-            None
-            str : to set if colored_by is set with
-                function int : index, tuple : xyz_tuple ->float/int
+                function int : index, tuple : xyz_tuple ->str_class
         :param marker:
             str : single character (matplotlib marker)
         :param markersize:
@@ -457,11 +474,9 @@ class Plot:
                                    else "z value invalid")
 
         # label
-        type_value_checks(label, good_types=(str, NoneType),
-                          type_message="label must be a string")
-        if label:  # label != from None and ""
-            kwargs_plot['label'] = label
-            self._at_least_one_label_defined = True
+        type_value_checks(label, good_types=(str, NoneType, dict),
+                          type_message="label must be a string or a dict colorcode : label")
+
         # marker
         type_value_checks(marker, good_types=(str, NoneType),
                           type_message="marker must be a string",
@@ -495,7 +510,7 @@ class Plot:
             else:
                 y_plot = y
         elif y_type is FuncType:
-            y_plot = [y(x[i], i) for i in range(x_y_z_collections_len)]
+            y_plot = [y(i, x[i]) for i in range(x_y_z_collections_len)]
         else:
             raise Exception("should never happen 86789455")
 
@@ -509,7 +524,7 @@ class Plot:
             else:
                 z_plot = z
         elif z_type is FuncType:
-            z_plot = [z(x[i], y[i], i) for i in range(x_y_z_collections_len)]
+            z_plot = [z(i, x[i], y[i]) for i in range(x_y_z_collections_len)]
         else:
             raise Exception("should never happen 78941153")
 
@@ -542,37 +557,40 @@ class Plot:
         if color_mode == Plot._cm_column_name:  # from column name to index
             colored_by = table.get_column_index_from_name(colored_by)
             color_mode = Plot._cm_column_index
-        # color_bar_label
-        type_value_checks(color_bar_label, good_types=(str, NoneType),
-                          type_message="color_bar_label must be a string",
-                          good_values=lambda color_bar_label:
-                          True if color_bar_label is None else
-                          color_mode is Plot._cm_function_float,
-                          value_message="color_bar_label can only be set " +
-                                        "if colored_by is a function i,line->float/int")
         # adding marker/fmt : (need to be after # color_mode )
         to_plot = (*to_plot, marker)
         # Plots following the color_mode
         print(color_mode)
         if color_mode is None:
+            if type(label) is str and len(label) != 0:  # label != from None and ""
+                kwargs_plot['label'] = label
+                self._at_least_one_label_defined = True
             self._ax.plot(*to_plot, **kwargs_plot)
         elif color_mode == Plot._cm_color_code:
-            self._ax.plot(*to_plot, **{**kwargs_plot, 'color': colored_by})
-        elif color_mode == Plot._cm_column_index:
+            if type(label) is str and len(label) != 0:  # label != from None and ""
+                kwargs_plot['label'] = label
+                self._at_least_one_label_defined = True
+            elif type(label) is dict and colored_by in label:
+                kwargs_plot['label'] = label[colored_by]
+                self._at_least_one_label_defined = True
+            kwargs_plot['color'] = colored_by
+            self._ax.plot(*to_plot, **kwargs_plot)
+        elif color_mode in [Plot._cm_column_index, Plot._cm_function_str]:
             self._at_least_one_label_defined = True
+            xyz = (x_plot, y_plot, z_plot) if self._dim == 3 else (x_plot, y_plot)
             # build dict_groups
             dict_groups = {}
             for index in range(len(x_plot)):
-                line = table[index]
-                if line[colored_by] in dict_groups:
-                    dict_groups[line[colored_by]] += [line]
+                group = (table[index][colored_by] if color_mode == Plot._cm_column_index
+                         else colored_by(index, xyz))
+                if group in dict_groups:
+                    dict_groups[group] += [index]
                 else:
-                    dict_groups[line[colored_by]] = [line]
+                    dict_groups[group] = [index]
             colors_list = random_color_well_dispatched(len(dict_groups))
             for group in dict_groups:
                 x_group, y_group, z_group = list(), list(), list()
-                table = dict_groups[group]
-                for index in range(len(x_plot)):
+                for index in dict_groups[group]:
                     x_group.append(x_plot[index])
                     y_group.append(y_plot[index])
                     if self._dim == 3:
@@ -581,11 +599,13 @@ class Plot:
                     to_plot = (x_group, y_group)
                 elif self._dim == 3:
                     to_plot = (x_group, y_group, z_group)
-
                 self._ax.plot(*(*to_plot, marker),
-                              **{**kwargs_plot, 'color': pastelize(colors_list.pop())})
+                              **{**kwargs_plot, 'label':group , 'color': pastelize(colors_list.pop())})
 
         elif color_mode == Plot._cm_function_color_code:
+            if type(label) is str and len(label) != 0:  # label != from None and ""
+                kwargs_plot['label'] = label
+                self._at_least_one_label_defined = True
             xyz = (x_plot, y_plot, z_plot) if self._dim == 3 else (x_plot, y_plot)
             dict_color_to_lines = dict()  # hexa -> plotable lines
             for index in range(len(x_plot)):
@@ -597,22 +617,27 @@ class Plot:
                         dict_color_to_lines[color][2] += [z_plot[index]]
                 else:
                     dict_color_to_lines[color] = [[x_plot[index]],
-                                         [y_plot[index]]]
+                                                  [y_plot[index]]]
                     if self._dim == 3:
                         dict_color_to_lines[color] = [[x_plot[index]],
-                                             [y_plot[index]],
-                                             [z_plot[index]]]
-            if self._dim == 2:
-                for color in dict_color_to_lines:
+                                                      [y_plot[index]],
+                                                      [z_plot[index]]]
+
+            for color in dict_color_to_lines:
+                if type(label) is dict and color in label:
+                    kwargs_plot['label'] = label[color]
+                    self._at_least_one_label_defined = True
+                if self._dim == 2:
                     self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], marker),
                                   **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
-            elif self._dim == 3:
-                for color in dict_color_to_lines:
-                    self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], dict_color_to_lines[color][2],
-                                    marker), **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
+                elif self._dim == 3:
+                    self._ax.plot(
+                        *(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
+                          dict_color_to_lines[color][2],
+                          marker), **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
         elif color_mode == Plot._cm_function_float:
-            maxi = -float('inf')
-            mini = float('inf')
+            maxi = -inf
+            mini = inf
             xyz = (x_plot, y_plot, z_plot) if self._dim == 3 else (x_plot, y_plot)
             for i in range(len(x_plot)):
                 try:
@@ -623,7 +648,7 @@ class Plot:
                     raise ValueError('colored_by function failed on parameters :' +
                                      '\ni=' + str(i) +
                                      '\nxyz_tuple=' + str(xyz))
-            self._print_color_bar(mini, maxi, color_bar_label)
+            self._print_color_bar(mini, maxi, label)
             dict_color_to_lines = {}  # hexa -> plotable lines
             for index in range(len(x_plot)):
                 maxolo = max(0, colored_by(index, (x_plot, y_plot, z_plot)) - mini)
@@ -641,22 +666,25 @@ class Plot:
                         dict_color_to_lines[color][2] += [z_plot[index]]
                 else:
                     dict_color_to_lines[color] = [[x_plot[index]],
-                                         [y_plot[index]]]
+                                                  [y_plot[index]]]
                     if self._dim == 3:
                         dict_color_to_lines[color] = [[x_plot[index]],
-                                             [y_plot[index]],
-                                             [z_plot[index]]]
+                                                      [y_plot[index]],
+                                                      [z_plot[index]]]
             if self._dim == 2:
                 for color in dict_color_to_lines:
                     self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], marker),
                                   **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
             elif self._dim == 3:
                 for color in dict_color_to_lines:
-                    self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], dict_color_to_lines[color][2],
-                                    marker), **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
+                    self._ax.plot(
+                        *(dict_color_to_lines[color][0], dict_color_to_lines[color][1], dict_color_to_lines[color][2],
+                          marker), **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
 
         else:
             raise Exception("should never happen 4567884565")
+        if self._at_least_one_label_defined:
+            self._ax.legend(loc='upper right', shadow=True).draggable()
         return self
 
 
@@ -1010,16 +1038,6 @@ class Table:
         return self
 
 
-def flatten_n_times(n, l):
-    n = int(n)
-    for _ in range(n):
-        if any(type(elem) is list for elem in l):
-            res = []
-            for elem in l:
-                res += elem if type(elem) is list else [elem]
-            l = res
-    return l
-
 
 def _get_data(path):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path)
@@ -1044,55 +1062,35 @@ def get_sample(id):
 
 
 def run_example():
-    # os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path)
-
-    source = '''
-import scimple as scm
-tab = scm.Table(scm.get_sample('xyz'),first_line=2,last_line=494) # 
-charges = scm.Table(scm.get_sample('charges'),first_line=1)
-scm.Plot(3,bg_color='#ddddff').add(tab[101:],1,2,3,markersize=4,marker='o',colored_by =lambda i,_:sum(charges[101+i])).add(tab[:101],1,2,3,markersize=4,marker='o',colored_by =0)
-scm.Plot(2,bg_color='#cccccc').add(tab[:101],1,2,colored_by=0).add(tab[101:],1,2,markersize=4,marker='x',colored_by =lambda i,_:sum(charges[101+i]))
-scm.Plot(2,bg_color='#cccccc', xlabel="x axis", ylabel="y axis").add(tab[101:],1,2,markersize=6,marker='o',colored_by =lambda _,line:line[3], color_label="z axis").add(tab[101:],1,2,markersize=4,marker='x',colored_by =lambda i,_:sum(charges[101+i]), color_label="external electrons")
-scm.Plot(2,bg_color='#cccccc', xlabel="atom", ylabel="z axis").add(tab,0,3,markersize=6,marker='o',colored_by = 0, color_label="z axis")#scm.show()'''
-    print("Few Examples Of Scimple Plots :), are they well displayed ? \S_o_u_r_c_e :" + source)
-    # example :
-
-    tab = Table(get_sample('xyz'), first_line=2, last_line=494)  #
-    # print(np.array(tab.map(lambda i, line: ('line '+str(i)+':',line)).get_mapping_as_table(2)))
-    charges = Table(get_sample('charges'), first_line=1)
-    Plot(3, bg_color='#ddddff').add(tab, 1, 2, 3, first_line=101, markersize=4, marker='o',
-                                    colored_by=lambda i, _: sum(charges[i])).add(tab, 1, 2, 3, last_line=100
-                                                                                 , markersize=4, marker='o',
-                                                                                 colored_by=0)
-    Plot(2, bg_color='#cccccc').add(tab, 1, 2, last_line=100, colored_by=0).add(tab, 1, 2, first_line=101, markersize=4,
-                                                                                marker='x',
-                                                                                colored_by=lambda i, _: sum(charges[i]))
-    Plot(2, bg_color='#cccccc', xlabel="x axis", ylabel="y axis").add(tab, 1, 2, first_line=101, markersize=6,
-                                                                      marker='o', colored_by=lambda _, line: line[3],
-                                                                      color_bar_label="z axis").add(tab, 1, 2,
-                                                                                                    first_line=101,
-                                                                                                    markersize=4,
-                                                                                                    marker='x',
-                                                                                                    colored_by=lambda i,
-                                                                                                                      _: sum(
-                                                                                                        charges[i]),
-                                                                                                    color_bar_label="external electrons")
-    Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis").add(tab, 0, 3, markersize=6, marker='o',
-                                                                    colored_by=0, color_bar_label="z axis")  # show()
-    show_and_block()
+    source = ''''''
 
 
 if __name__ == '__main__':
     # run_example()
     tab = get_sample('xyz')
-    Plot(3).add(x=xgrid(-10, 10, 1), y=ygrid(-10, 10, 1), z=lambda x, y, i: (x * y) ** 2,
-                marker='x', colored_by=lambda i, xyz: i)
-    # Plot(3).add(table=tab, x=1, y=2, z=lambda x, y, i: tab[i][3],
-    #             marker='.', colored_by=0)
-    Plot(2,title=':)').add(x=range(100), y=range(100),
-                marker='.', colored_by=lambda i, xyz: xyz[1][i], color_bar_label='olol')\
-    .add(x=range(100), y=range(100),
-         marker='.', colored_by=lambda i, xyz: xyz[1][i], color_bar_label='olol')\
-    .add(x=range(100), y=range(-100, 0),
-         marker='x', colored_by=lambda i, xyz: ['#ff0000', '#00ff00', '#0000ff'][xyz[1][i] % 3])
+    Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50*math.sin(x/10),
+                            marker='.', colored_by=lambda i, xy: xy[1][i], label='du noir au blanc') \
+        .add(x=range(100), y=lambda i, x: 50*math.sin(x/10)-100,
+             marker='.', colored_by='#ff00ff', label='rose') \
+        .add(x=range(100), y=lambda i, x: 50*math.sin(x/10)-200,
+             marker='.', colored_by=lambda i, xy: xy[1][i], label='du jaune au rouge') \
+        .add(x=range(100), y=lambda i, x: 50*math.sin(x/10)-300,
+             marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[1][i]) % 3],
+             label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'})\
+        .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 400,
+             marker='.', markersize=3,
+             colored_by=lambda i, xy: '>-400' if xy[1][i] > -400 else '<=-400')
+    Plot(3, title=':)').add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2),
+                            z=lambda i, x, y: (x * y) ** 2+8000,
+                            marker='.', colored_by=lambda i, xy: xy[2][i], label='du noir au blanc') \
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2+5000,
+             marker='.', colored_by='#ff00ff', label='rose') \
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2+2000,
+             marker='.', colored_by=lambda i, xy: xy[2][i], label='du jaune au rouge') \
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2-1000,
+             marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[2][i]) % 3],
+             label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2-4000,
+             marker='.', markersize=3,
+             colored_by=lambda i, xy: 'exterieur' if math.sqrt(xy[0][i]**2+xy[1][i]**2) > 1 else 'interieur')
     show(True)
