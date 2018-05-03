@@ -3,6 +3,9 @@ SCIMPLE, Parse and Plot scimply in 2 lines
 Maintainer: enzobonnal@gmail.com
 """
 import copy
+import gc;
+
+gc.collect()
 import inspect
 import multiprocessing
 import os
@@ -10,6 +13,7 @@ import random
 from collections import Collection
 from threading import Thread
 
+import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd  # TODO : faire du pandas que si c'est  déjà install
@@ -19,12 +23,29 @@ from mpl_toolkits.mplot3d import Axes3D
 
 _ = Axes3D
 
+
+class ScimpleError(Exception):
+    """module specific Errors"""
+
+
+# #####
+# TYPES
+# #####
+
 FuncType = type(lambda x: None)
 NoneType = type(None)
 
 
-class ScimpleError(Exception):
-    """module specific Errors"""
+# #####
+# PLOTS TOOLS
+# #####
+
+def xgrid(a, b, p):
+    return flatten_n_times(1, [[i] * math.ceil((b - a) / p) for i in range(a, b, p)])
+
+
+def ygrid(a, b, p):
+    return flatten_n_times(1, [[i for i in range(a, b, p)] for _ in range(a, b, p)])
 
 
 # #####
@@ -57,11 +78,15 @@ def type_value_checks(x, good_types=None, good_values=None, type_message='', val
     """
     x_type = type(x)
     if good_types is not None:
-        if not x_type in good_types:
-            raise TypeError(type_message)
+        if isinstance(good_types, Collection):
+            if not isinstance(x, tuple(good_types)):
+                raise TypeError(type_message)
+        else:
+            if x_type != good_types:
+                raise TypeError(type_message)
     if good_values is not None:
         if callable(good_values):
-            if len(nb_params(good_values)) != 1:
+            if nb_params(good_values) != 1:
                 raise ValueError("good_values must take exactly 1 argument")
             if not good_values(x):
                 raise ValueError(value_message)
@@ -181,6 +206,7 @@ class Plot:
     plt.rcParams['lines.color'] = 'b'
 
     _cm_column_index = 'column_index'
+    _cm_column_name = 'column_name'
     _cm_color_code = 'color_code'
     _cm_function_float = 'function_float'
     _cm_function_color_code = 'function_color_code'
@@ -235,19 +261,20 @@ class Plot:
                               value_message="bg_color_must be a valid hexadecimal color code, example : '#ff45ab'")
             self._ax.set_facecolor(bg_color)
 
-    def _print_color_bar(self, color_label, mini, maxi):
+    def _print_color_bar(self, mini, maxi, color_bar_label=None):
         """
-        Called when coloredBy of type function float is used : creates a 'legend subplot' describing the values
+        Called when colored_by of type function float is used : creates a 'legend subplot' describing the values
         Only 2 color bars can be plotted on a same plot
-        :param color_label: str
         :param mini: int/float
         :param maxi: int/float
+        :param color_bar_label: str
         :return: None
         """
         self._color_bar_nb += 1
         if self._color_bar_nb == 3:
             raise ScimpleError("only 2 function-colored plots available")
         color_bar_subplot = self._fig.add_subplot(self._gs[3 if self._color_bar_nb == 1 else 0])
+        print(mini, maxi)
         color_bar_subplot.imshow(
             [[i] for i in np.arange(maxi, mini, (mini - maxi) / 100)] if self._color_bar_nb == 1 else
             [[i for i in np.arange(maxi, mini, (mini - maxi) / 100)]],
@@ -259,11 +286,14 @@ class Plot:
         color_bar_subplot.legend().set_visible(False)
         if self._color_bar_nb == 1:
             color_bar_subplot.set_xticks([])
-            color_bar_subplot.set_ylabel(color_label)
+            if color_bar_label:
+                color_bar_subplot.set_ylabel(color_bar_label)
             color_bar_subplot.yaxis.tick_right()
         else:
             color_bar_subplot.set_yticks([])
-            color_bar_subplot.set_xlabel(color_label)
+            color_bar_subplot.xaxis.set_label_position('top')
+            if color_bar_label:
+                color_bar_subplot.set_xlabel(color_bar_label)
             color_bar_subplot.xaxis.tick_top()
 
     @staticmethod
@@ -272,24 +302,27 @@ class Plot:
 
         :param colored_by: argument given to Plot.add()
         :return: str describing the mode, one of the following :
-                'column_index', 'color_code', 'function_float', 'function_color_code'
+                'column_index', 'column_name', 'color_code', 'function_float', 'function_color_code'
                 or None if no mode match
         """
         if type(colored_by) is int:
             return Plot._cm_column_index
         if is_color_code(colored_by):
             return Plot._cm_color_code
+        if type(colored_by) is str:
+            return Plot._cm_column_name
         if callable(colored_by):
             if nb_params(colored_by) != 2:
                 return None
-            if type(colored_by(test_index, xyz_tuple)) in {int, float}:
+            res = colored_by(test_index, xyz_tuple)
+            if type(res) in {int, float}:
                 return Plot._cm_function_float
-            if is_color_code(colored_by(test_index, xyz_tuple)):
+            if is_color_code(res):
                 return Plot._cm_function_color_code
         return None
 
-    def add(self, table=None, x=None, y=None, z=None, first_line=0, last_line=None, label="", colored_by=None,
-            color_bar_label='', marker='o', markersize=9):
+    def add(self, table=None, x=None, y=None, z=None, first_line=0, last_line=None,
+            label=None, colored_by=None, color_bar_label=None, marker='-', markersize=9):
         """
 
         :param table:
@@ -303,20 +336,37 @@ class Plot:
             int : table column index
             str : table column name
             collections.Collection : 1D array-like
-            function type(x_plot element) -> int/str
+            function type(x_plot element) x, int index -> int/str
         :param z: Should be set if plot dimension is 3 and kept as None if dim != 3
             None
             int : table column index
             str : table column name
             collections.Collection : 1D array-like
-            function type(x_plot element) -> int/str
+            function type(x_plot element) x, type(y_plot element) y,int index -> int/str
         :param first_line:
+            int : first row to be considered in table (indexing starts at 0)
         :param last_line:
+            None
+            int : last row (included) to be considered in table (indexing starts at 0)
         :param label:
+            None
+            label of the plot
         :param colored_by:
+            None
+            str : describing the mode, one of the following :
+                int : column_index integer
+                color code
+                str : column_name
+                function int : index, tuple : xyz_tuple ->float/int
+                function int : index, tuple : xyz_tuple ->(color_code, str_label)
         :param color_bar_label:
+            None
+            str : to set if colored_by is set with
+                function int : index, tuple : xyz_tuple ->float/int
         :param marker:
+            str : single character (matplotlib marker)
         :param markersize:
+            int
         :return:
         """
         # first_line
@@ -325,98 +375,99 @@ class Plot:
                           good_values=lambda first_line: first_line >= 0,
                           value_message="first_line should be positive")
         # last_line
-        if last_line is None:
+        if last_line is None and table is not None:
             last_line = len(table) - 1
-        type_value_checks(last_line, good_types={int, NoneType},
+        type_value_checks(last_line, good_types=(int, NoneType),
                           type_message="last_line must be an integer",
-                          good_values=lambda last_line: type(last_line is NoneType or last_line >= first_line),
+                          good_values=lambda last_line: type(last_line) is NoneType or last_line >= first_line,
                           value_message="last_line should be greater than or equal to first_line (default 0)")
-        if last_line is None:
-            last_line = len(table) - 1 if table else first_line
         # variables:
-        x_y_z_collections_len = last_line - first_line + 1
+        x_y_z_collections_len = last_line - first_line + 1 if last_line else None
         kwargs_plot = {}
         # table
-        type_value_checks(table, good_types={Table, NoneType},
+        type_value_checks(table, good_types=(Table, NoneType),
                           type_message='table must be an instance of class scimple.Table or None')
         # x
-        x_type = type_value_checks(x, good_types={Collection, int, str},
+        x_type = type_value_checks(x, good_types=(Collection, int, str),
                                    type_message="x must be a Collection (to plot) or (only if table set)" +
-                                   "an int (table column index) or a str (table column name)",
+                                                "an int (table column index) or a str (table column name)",
                                    good_values=lambda x:
                                    0 <= x < len(table.columns) if table is not None and type(x) is int else
+                                   False if table is None and type(x) is int else
                                    x in table.columns if table is not None and type(x) is str else
                                    len(x) == x_y_z_collections_len if table is not None else
                                    len(x) > 0,
                                    value_message="x value must verify : 0 <= x < len(table.columns)"
                                    if table is not None and type(x) is int else
+                                   "x can't be integer if table not set"
+                                   if table is None and type(x) is int else
                                    "x must be in table.columns" if table is not None and type(x) is str else
                                    "x must be a collection " +
                                    "verifying : len(x) == last_line-first_line+1" if table is not None else
                                    "x must be a collection " +
                                    "verifying : len(x) > 0")
-        if x_type is Collection:
-            x_y_z_collections_len = len(x_type)
+        if issubclass(x_type, Collection):
+            x_y_z_collections_len = len(x)
         # y
-        y_type = type_value_checks(y, good_types={Collection, int, str, FuncType},
+        y_type = type_value_checks(y, good_types=(Collection, int, str, FuncType),
                                    type_message="y must be a Collection (to plot) or (only if table set)" +
-                                   "an int (table column index) or a str (table column name)",
+                                                "an int (table column index) or a str (table column name)",
                                    good_values=lambda y:
                                    0 <= y < len(table.columns) if table is not None and type(y) is int else
+                                   False if table is None and type(x) is int else
                                    y in table.columns if table is not None and type(y) is str else
-                                   len(y) == x_y_z_collections_len if type(y) is Collection else
-                                   nb_params(y) == 1,
+                                   len(y) == x_y_z_collections_len if isinstance(y, Collection) else
+                                   nb_params(y) == 2 if callable(y) else False,
                                    value_message="y value must verify : 0 <= y < len(table.columns)"
                                    if table is not None and type(y) is int else
+                                   "y can't be integer if table not set"
+                                   if table is None and type(y) is int else
                                    "y must be in table.columns" if table is not None and type(y) is str else
                                    "y must be a collection " +
-                                   "verifying : len(y) == len(x)" if table is not None and type(y) is Collection else
-                                   "y must be a collection verifying : len(y) > 0" if type(y) is Collection else
-                                   "y function must take exactly 1 argument (type(x element))")
+                                   "verifying : len(y) == len(x)" if table is not None and isinstance(y,
+                                                                                                      Collection) else
+                                   "y must be a collection verifying : len(y) > 0" if isinstance(y, Collection) else
+                                   "y function must take exactly 1 argument (type(x element))" if callable(y) else
+                                   "y value invalid")
 
         # z
-        z_type = type_value_checks(z, good_types={Collection, int, str, FuncType, NoneType},
+        z_type = type_value_checks(z, good_types=(Collection, int, str, FuncType, NoneType),
                                    type_message="z must be a Collection (to plot) or (only if table set)" +
-                                   "an int (table column index) or a str (table column name) or None",
+                                                "an int (table column index) or a str (table column name) or None",
                                    good_values=lambda z:
-                                   False if self._dim != 3 else
-                                   True if None else
+                                   False if self._dim != 3 and z is not None else
+                                   True if z is None else
                                    0 <= z < len(table.columns) if table is not None and type(z) is int else
+                                   False if table is None and type(x) is int else
                                    z in table.columns if table is not None and type(z) is str else
-                                   len(z) == x_y_z_collections_len if type(z) is Collection else
-                                   nb_params(z) == 2,
-                                   value_message="z is only settable in 3D plots" if self._dim != 3 else
+                                   len(z) == x_y_z_collections_len if isinstance(z, Collection) else
+                                   nb_params(z) == 3 if callable(z) else False,
+                                   value_message="z is only settable in 3D plots"
+                                   if self._dim != 3 and z is not None else
                                    "z value must verify : 0 <= z < len(table.columns)"
                                    if table is not None and type(z) is int else
+                                   "z can't be integer if table not set"
+                                   if table is None and type(z) is int else
                                    "z must be in table.columns" if table is not None and type(z) is str else
                                    "z must be a collection " +
-                                   "verifying : len(z) == len(x)" if table is not None and type(z) is Collection else
-                                   "z must be a collection verifying : len(z) > 0" if type(z) is Collection else
-                                   "z function must take exactly 2 argument (type(x element,y element))")
+                                   "verifying : len(z) == len(x)" if table is not None and isinstance(z,
+                                                                                                      Collection) else
+                                   "z must be a collection verifying : len(z) > 0" if isinstance(z, Collection) else
+                                   "z function must take exactly 2 argument (type(x element,y element))" if callable(z)
+                                   else "z value invalid")
 
-        # colored_by:
-        color_mode = self._coloring_mode(colored_by, first_line, table[first_line])
-        type_value_checks(color_mode, good_types=str,
-                          type_message='coloredBy is not a valid colored_by parameters, should be one of the' +
-                                       'following :\n' + "'column_index integer', 'color_code'," +
-                                       "'function int : index, tuple : xyz_tuple ->float/int'," +
-                                       "'function int : index, tuple : xyz_tuple ->color_code'")
         # label
-        type_value_checks(label, good_types={str, NoneType},
+        type_value_checks(label, good_types=(str, NoneType),
                           type_message="label must be a string")
         if label:  # label != from None and ""
             kwargs_plot['label'] = label
-        # color_bar_label
-        type_value_checks(color_bar_label, good_types=str,
-                          type_message="color_bar_label must be a string",
-                          good_values=lambda color_bar_label: color_mode is Plot._cm_function_float,
-                          value_message="color_bar_label can only be set if colored_by is a function i,line->float/int")
+            self._at_least_one_label_defined = True
         # marker
-        type_value_checks(marker, good_types=str,
-                          type_message="color_bar_label must be a string",
-                          good_values=lambda marker: len(marker) == 1,
+        type_value_checks(marker, good_types=(str, NoneType),
+                          type_message="marker must be a string",
+                          good_values=lambda marker: not marker or len(marker) == 1,
                           value_message="marker can only be a matplotlib marker like 'o' or '-' (one character)")
-        kwargs_plot['marker'] = marker
+
         # markersize
         type_value_checks(markersize, good_types=int,
                           type_message="markersize must be an int",
@@ -428,7 +479,7 @@ class Plot:
         z_plot = None
         if x_type in {int, str}:
             x_plot = table[first_line:last_line + 1, x]
-        elif x_type is Collection:
+        elif issubclass(x_type, Collection):
             if x_type is pd.Series:
                 x_plot = x.as_matrix()
             else:
@@ -438,13 +489,13 @@ class Plot:
 
         if y_type in {int, str}:
             y_plot = table[first_line:last_line + 1, y]
-        elif y_type is Collection:
+        elif issubclass(y_type, Collection):
             if y_type is pd.Series:
-                y_plot = x.as_matrix()
+                y_plot = y.as_matrix()
             else:
-                y_plot = x
+                y_plot = y
         elif y_type is FuncType:
-            y_plot = list(map(y, x_plot))
+            y_plot = [y(x[i], i) for i in range(x_y_z_collections_len)]
         else:
             raise Exception("should never happen 86789455")
 
@@ -452,35 +503,158 @@ class Plot:
             pass
         elif z_type in {int, str}:
             z_plot = table[first_line:last_line + 1, z]
-        elif z_type is Collection:
+        elif issubclass(z_type, Collection):
             if z_type is pd.Series:
-                z_plot = x.as_matrix()
+                z_plot = z.as_matrix()
             else:
-                z_plot = x
+                z_plot = z
         elif z_type is FuncType:
-            z_plot = [z(x[i], y[i]) for i in range(x_y_z_collections_len)]
+            z_plot = [z(x[i], y[i], i) for i in range(x_y_z_collections_len)]
         else:
             raise Exception("should never happen 78941153")
 
         if not (x_plot and y_plot):
             raise Exception("should never happen 448789")
 
-        if z_plot is not None:  # 3D
-            to_plot = (x, y, z)
-        else:  # 2D
-            to_plot = (x, y)
+        # to_plot (need to be before # colored_by )
 
+        if self._dim == 3:  # 3D
+            to_plot = (x_plot, y_plot, z_plot)
+        else:  # 2D
+            to_plot = (x_plot, y_plot)
+
+        # colored_by:
+        color_mode = self._coloring_mode(colored_by, first_line,
+                                         [[to_plot[i][0]] for i in range(len(to_plot))])
+        type_value_checks(color_mode, good_types=(str, NoneType),
+                          type_message='colored_by is not a valid colored_by parameters, should be one of the' +
+                                       'following :\n' + "'column_index integer', 'color_code'," +
+                                       "'function int : index, tuple : xyz_tuple ->float/int'," +
+                                       "'function int : index, tuple : xyz_tuple ->color_code'",
+                          good_values=lambda color_mode:
+                          False if color_mode is None and colored_by is not None else
+                          False if color_mode == Plot._cm_column_index
+                                   or color_mode == Plot._cm_column_name
+                                   and table is None else True,
+                          value_message="colored_by is not a valid mode"
+                          if color_mode is None and colored_by is not None else
+                          "colored_by can't be a column index/name if table parameter is not set")
+        if color_mode == Plot._cm_column_name:  # from column name to index
+            colored_by = table.get_column_index_from_name(colored_by)
+            color_mode = Plot._cm_column_index
+        # color_bar_label
+        type_value_checks(color_bar_label, good_types=(str, NoneType),
+                          type_message="color_bar_label must be a string",
+                          good_values=lambda color_bar_label:
+                          True if color_bar_label is None else
+                          color_mode is Plot._cm_function_float,
+                          value_message="color_bar_label can only be set " +
+                                        "if colored_by is a function i,line->float/int")
+        # adding marker/fmt : (need to be after # color_mode )
+        to_plot = (*to_plot, marker)
         # Plots following the color_mode
+        print(color_mode)
         if color_mode is None:
             self._ax.plot(*to_plot, **kwargs_plot)
         elif color_mode == Plot._cm_color_code:
             self._ax.plot(*to_plot, **{**kwargs_plot, 'color': colored_by})
         elif color_mode == Plot._cm_column_index:
-            pass
+            self._at_least_one_label_defined = True
+            # build dict_groups
+            dict_groups = {}
+            for index in range(len(x_plot)):
+                line = table[index]
+                if line[colored_by] in dict_groups:
+                    dict_groups[line[colored_by]] += [line]
+                else:
+                    dict_groups[line[colored_by]] = [line]
+            colors_list = random_color_well_dispatched(len(dict_groups))
+            for group in dict_groups:
+                x_group, y_group, z_group = list(), list(), list()
+                table = dict_groups[group]
+                for index in range(len(x_plot)):
+                    x_group.append(x_plot[index])
+                    y_group.append(y_plot[index])
+                    if self._dim == 3:
+                        z_group.append(z_plot[index])
+                if self._dim == 2:
+                    to_plot = (x_group, y_group)
+                elif self._dim == 3:
+                    to_plot = (x_group, y_group, z_group)
+
+                self._ax.plot(*(*to_plot, marker),
+                              **{**kwargs_plot, 'color': pastelize(colors_list.pop())})
+
         elif color_mode == Plot._cm_function_color_code:
-            pass
+            xyz = (x_plot, y_plot, z_plot) if self._dim == 3 else (x_plot, y_plot)
+            dict_color_to_lines = dict()  # hexa -> plotable lines
+            for index in range(len(x_plot)):
+                color = colored_by(index, xyz)
+                if color in dict_color_to_lines:
+                    dict_color_to_lines[color][0] += [x_plot[index]]
+                    dict_color_to_lines[color][1] += [y_plot[index]]
+                    if self._dim == 3:
+                        dict_color_to_lines[color][2] += [z_plot[index]]
+                else:
+                    dict_color_to_lines[color] = [[x_plot[index]],
+                                         [y_plot[index]]]
+                    if self._dim == 3:
+                        dict_color_to_lines[color] = [[x_plot[index]],
+                                             [y_plot[index]],
+                                             [z_plot[index]]]
+            if self._dim == 2:
+                for color in dict_color_to_lines:
+                    self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], marker),
+                                  **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
+            elif self._dim == 3:
+                for color in dict_color_to_lines:
+                    self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], dict_color_to_lines[color][2],
+                                    marker), **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
         elif color_mode == Plot._cm_function_float:
-            pass
+            maxi = -float('inf')
+            mini = float('inf')
+            xyz = (x_plot, y_plot, z_plot) if self._dim == 3 else (x_plot, y_plot)
+            for i in range(len(x_plot)):
+                try:
+                    value = colored_by(i, xyz)
+                    maxi = max(maxi, value)
+                    mini = min(mini, value)
+                except:
+                    raise ValueError('colored_by function failed on parameters :' +
+                                     '\ni=' + str(i) +
+                                     '\nxyz_tuple=' + str(xyz))
+            self._print_color_bar(mini, maxi, color_bar_label)
+            dict_color_to_lines = {}  # hexa -> plotable lines
+            for index in range(len(x_plot)):
+                maxolo = max(0, colored_by(index, (x_plot, y_plot, z_plot)) - mini)
+                minolo = min(255, maxolo * 255 / (maxi - mini))
+                color_hexa_unit = hex(int(minolo))[2:]
+                if len(color_hexa_unit) == 1:
+                    color_hexa_unit = "0" + color_hexa_unit
+                color = "#" + color_hexa_unit * 3 \
+                    if self._color_bar_nb == 1 else \
+                    "#ff" + color_hexa_unit + "00"
+                if color in dict_color_to_lines:
+                    dict_color_to_lines[color][0] += [x_plot[index]]
+                    dict_color_to_lines[color][1] += [y_plot[index]]
+                    if self._dim == 3:
+                        dict_color_to_lines[color][2] += [z_plot[index]]
+                else:
+                    dict_color_to_lines[color] = [[x_plot[index]],
+                                         [y_plot[index]]]
+                    if self._dim == 3:
+                        dict_color_to_lines[color] = [[x_plot[index]],
+                                             [y_plot[index]],
+                                             [z_plot[index]]]
+            if self._dim == 2:
+                for color in dict_color_to_lines:
+                    self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], marker),
+                                  **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
+            elif self._dim == 3:
+                for color in dict_color_to_lines:
+                    self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], dict_color_to_lines[color][2],
+                                    marker), **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
+
         else:
             raise Exception("should never happen 4567884565")
         return self
@@ -910,13 +1084,15 @@ scm.Plot(2,bg_color='#cccccc', xlabel="atom", ylabel="z axis").add(tab,0,3,marke
 
 if __name__ == '__main__':
     # run_example()
-    data = get_sample('adults')
-    print(data.get_columns_names())
-    data['age'] = [500]
-    print(data['age'])
-    # print(data)
-    # print(data.get_columns_names())
-    l = Line(Line([1, 2, 4, 45, 64, 'jkgh'], column_names=['a', 'b', 'c', 'd', 'e', 'f'])['b', 'd', 1, 2, 3, 4, 5, 6],
-             column_names=['b', 'd'])
-    print(l.pop('d'))
-    print(l.get_line())
+    tab = get_sample('xyz')
+    Plot(3).add(x=xgrid(-10, 10, 1), y=ygrid(-10, 10, 1), z=lambda x, y, i: (x * y) ** 2,
+                marker='x', colored_by=lambda i, xyz: i)
+    # Plot(3).add(table=tab, x=1, y=2, z=lambda x, y, i: tab[i][3],
+    #             marker='.', colored_by=0)
+    Plot(2,title=':)').add(x=range(100), y=range(100),
+                marker='.', colored_by=lambda i, xyz: xyz[1][i], color_bar_label='olol')\
+    .add(x=range(100), y=range(100),
+         marker='.', colored_by=lambda i, xyz: xyz[1][i], color_bar_label='olol')\
+    .add(x=range(100), y=range(-100, 0),
+         marker='x', colored_by=lambda i, xyz: ['#ff0000', '#00ff00', '#0000ff'][xyz[1][i] % 3])
+    show(True)
