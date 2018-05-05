@@ -2,21 +2,16 @@
 SCIMPLE, Parse and Plot scimply in 2 lines
 Maintainer: enzobonnal@gmail.com
 """
-import copy
-import gc;
-
-gc.collect()
 import inspect
-import multiprocessing
+import math
 import os
 import random
-from collections import Collection
-from threading import Thread
+import re
+from collections import Collection, Iterable
 
-import math
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd  # TODO : faire du pandas que si c'est  déjà install
+import pandas as pd
 from matplotlib import cm
 from matplotlib import gridspec
 from mpl_toolkits.mplot3d import Axes3D
@@ -36,6 +31,7 @@ FuncType = type(lambda x: None)
 NoneType = type(None)
 inf = float('inf')
 
+
 # #####
 # TOOLS
 # #####
@@ -48,6 +44,30 @@ def flatten_n_times(n, l):
                 res += elem if type(elem) is list else [elem]
             l = res
     return l
+
+
+def try_apply(x, callable_or_collables):
+    """
+
+    :param x: any
+    :param callable_or_collables: callable or Collection of callables
+    :return:
+        callable_or_collables(x) or x if callable_or_collables failed on x
+        callable_or_collables[i](x) or x if all callables of callable_or_collables collection failed on x
+    """
+    if callable(callable_or_collables):
+        try:
+            return callable_or_collables(x)
+        except:
+            return x
+    elif issubclass(type(callable_or_collables), Iterable):
+        for fi in callable_or_collables:
+            try:
+                return fi(x)
+            except:
+                pass
+        return x
+
 
 # #####
 # PLOTS TOOLS
@@ -262,7 +282,7 @@ class Plot:
             type_value_checks(ylabel, good_types=str, type_message="ylabel type must be str")
             self._ax.set_ylabel(ylabel)
         if zlabel is not None:
-            type_value_checks(zlabel, good_types=str, good_values=lambda zlabel_: dim != 3,
+            type_value_checks(zlabel, good_types=str, good_values=lambda zlabel_: dim == 3,
                               type_message="zlabel type must be str",
                               value_message="zlabel is only settable on 3D plots")
             self._ax.set_zlabel(zlabel)
@@ -275,8 +295,8 @@ class Plot:
     def _print_color_bar(self, mini, maxi, color_bar_label=None):
         """
         Called when colored_by of type function float is used : creates a 'legend subplot' describing the values
-        Only 2 color bars can be plotted on a same plot
-        :param mini: int/float
+        Only 2 color bars can be plotted on a same plot        :param mini: int/float
+
         :param maxi: int/float
         :param color_bar_label: str
         :return: None
@@ -328,7 +348,7 @@ class Plot:
             try:
                 float(res)
                 return Plot._cm_function_float
-            except ValueError:
+            except:
                 pass
             if is_color_code(res):
                 return Plot._cm_function_color_code
@@ -337,7 +357,7 @@ class Plot:
         return None
 
     def add(self, table=None, x=None, y=None, z=None, first_line=0, last_line=None,
-            label=None, colored_by=None, color_bar_label=None, marker='-', markersize=9):
+            label=None, colored_by=None, marker='-', markersize=9):
         """
 
         :param table:
@@ -397,24 +417,29 @@ class Plot:
         # variables:
         x_y_z_collections_len = last_line - first_line + 1 if last_line else None
         kwargs_plot = {}
+        columns = []
         # table
-        type_value_checks(table, good_types=(Table, NoneType),
-                          type_message='table must be an instance of class scimple.Table or None')
+        type_value_checks(table, good_values=lambda table: True if table is None else
+        is_2d_array_like_not_empty(table),
+                          value_message='table must be an instance of a 2D array-like or None')
+        if isinstance(table, pd.DataFrame):
+            columns = list(table.columns)
+            table = table.values
         # x
         x_type = type_value_checks(x, good_types=(Collection, int, str),
                                    type_message="x must be a Collection (to plot) or (only if table set)" +
                                                 "an int (table column index) or a str (table column name)",
                                    good_values=lambda x:
-                                   0 <= x < len(table.columns) if table is not None and type(x) is int else
+                                   0 <= x < len(table[first_line]) if table is not None and type(x) is int else
                                    False if table is None and type(x) is int else
-                                   x in table.columns if table is not None and type(x) is str else
+                                   x in columns if table is not None and type(x) is str else
                                    len(x) == x_y_z_collections_len if table is not None else
                                    len(x) > 0,
-                                   value_message="x value must verify : 0 <= x < len(table.columns)"
+                                   value_message="x value must verify : 0 <= x < len(table[first_line])"
                                    if table is not None and type(x) is int else
                                    "x can't be integer if table not set"
                                    if table is None and type(x) is int else
-                                   "x must be in table.columns" if table is not None and type(x) is str else
+                                   "x must be in table[first_line]" if table is not None and type(x) is str else
                                    "x must be a collection " +
                                    "verifying : len(x) == last_line-first_line+1" if table is not None else
                                    "x must be a collection " +
@@ -426,21 +451,22 @@ class Plot:
                                    type_message="y must be a Collection (to plot) or (only if table set)" +
                                                 "an int (table column index) or a str (table column name)",
                                    good_values=lambda y:
-                                   0 <= y < len(table.columns) if table is not None and type(y) is int else
+                                   0 <= y < len(table[first_line]) if table is not None and type(y) is int else
                                    False if table is None and type(x) is int else
-                                   y in table.columns if table is not None and type(y) is str else
+                                   y in columns if table is not None and type(y) is str else
                                    len(y) == x_y_z_collections_len if isinstance(y, Collection) else
                                    nb_params(y) == 2 if callable(y) else False,
-                                   value_message="y value must verify : 0 <= y < len(table.columns)"
+                                   value_message="y value must verify : 0 <= y < len(table[first_line])"
                                    if table is not None and type(y) is int else
                                    "y can't be integer if table not set"
                                    if table is None and type(y) is int else
-                                   "y must be in table.columns" if table is not None and type(y) is str else
+                                   "y must be in table[first_line]" if table is not None and type(y) is str else
                                    "y must be a collection " +
                                    "verifying : len(y) == len(x)" if table is not None and isinstance(y,
                                                                                                       Collection) else
                                    "y must be a collection verifying : len(y) > 0" if isinstance(y, Collection) else
-                                   "y function must take exactly 1 argument (type(x element))" if callable(y) else
+                                   "y function must take exactly 2 argument (int index, type(x element))"
+                                   if callable(y) else
                                    "y value invalid")
 
         # z
@@ -450,23 +476,25 @@ class Plot:
                                    good_values=lambda z:
                                    False if self._dim != 3 and z is not None else
                                    True if z is None else
-                                   0 <= z < len(table.columns) if table is not None and type(z) is int else
+                                   0 <= z < len(table[first_line]) if table is not None and type(z) is int else
                                    False if table is None and type(x) is int else
-                                   z in table.columns if table is not None and type(z) is str else
+                                   z in columns if table is not None and type(z) is str else
                                    len(z) == x_y_z_collections_len if isinstance(z, Collection) else
                                    nb_params(z) == 3 if callable(z) else False,
                                    value_message="z is only settable in 3D plots"
                                    if self._dim != 3 and z is not None else
-                                   "z value must verify : 0 <= z < len(table.columns)"
+                                   "z value must verify : 0 <= z < len(table[first_line])"
                                    if table is not None and type(z) is int else
                                    "z can't be integer if table not set"
                                    if table is None and type(z) is int else
-                                   "z must be in table.columns" if table is not None and type(z) is str else
+                                   "z must be in table[first_line]" if table is not None and type(z) is str else
                                    "z must be a collection " +
                                    "verifying : len(z) == len(x)" if table is not None and isinstance(z,
                                                                                                       Collection) else
                                    "z must be a collection verifying : len(z) > 0" if isinstance(z, Collection) else
-                                   "z function must take exactly 2 argument (type(x element,y element))" if callable(z)
+                                   "z function must take exactly 3 argument "+
+                                   "(int index, type(x element), type(y element)))"
+                                   if callable(z)
                                    else "z value invalid")
 
         # label
@@ -489,7 +517,12 @@ class Plot:
         # arrays to plot
         z_plot = None
         if x_type in {int, str}:
-            x_plot = table[first_line:last_line + 1, x]
+            if x_type is str:
+                x = columns.index(x)
+            try:
+                x_plot = table[first_line:last_line + 1, x]
+            except:
+                x_plot = [line[x] for line in table[first_line:last_line + 1]]
         elif issubclass(x_type, Collection):
             if x_type is pd.Series:
                 x_plot = x.as_matrix()
@@ -497,34 +530,45 @@ class Plot:
                 x_plot = x
         else:
             raise Exception("should never happen 48648648")
-
+        x_y_z_collections_len = len(x_plot)
         if y_type in {int, str}:
-            y_plot = table[first_line:last_line + 1, y]
+            if y_type is str:
+                y = columns.index(y)
+            try:
+                y_plot = table[first_line:last_line + 1, y]
+            except:
+                y_plot = [line[y] for line in table[first_line:last_line + 1]]
         elif issubclass(y_type, Collection):
             if y_type is pd.Series:
                 y_plot = y.as_matrix()
             else:
                 y_plot = y
         elif y_type is FuncType:
-            y_plot = [y(i, x[i]) for i in range(x_y_z_collections_len)]
+            y_plot = [y(i, x_plot[i]) for i in range(x_y_z_collections_len)]
         else:
             raise Exception("should never happen 86789455")
 
         if z_type is NoneType:
             pass
         elif z_type in {int, str}:
-            z_plot = table[first_line:last_line + 1, z]
+            if z_type is str:
+                z = columns.index(z)
+            try:
+                z_plot = table[first_line:last_line + 1, z]
+            except:
+                z_plot = [line[z] for line in table[first_line:last_line + 1]]
         elif issubclass(z_type, Collection):
             if z_type is pd.Series:
                 z_plot = z.as_matrix()
             else:
                 z_plot = z
         elif z_type is FuncType:
-            z_plot = [z(i, x[i], y[i]) for i in range(x_y_z_collections_len)]
+
+            z_plot = [z(i, x_plot[i], y_plot[i]) for i in range(x_y_z_collections_len)]
         else:
             raise Exception("should never happen 78941153")
 
-        if not (x_plot and y_plot):
+        if x_plot is None or y_plot is None:
             raise Exception("should never happen 448789")
 
         # to_plot (need to be before # colored_by )
@@ -535,7 +579,7 @@ class Plot:
             to_plot = (x_plot, y_plot)
 
         # colored_by:
-        color_mode = self._coloring_mode(colored_by, first_line,
+        color_mode = self._coloring_mode(colored_by, 0,
                                          [[to_plot[i][0]] for i in range(len(to_plot))])
         type_value_checks(color_mode, good_types=(str, NoneType),
                           type_message='colored_by is not a valid colored_by parameters, should be one of the' +
@@ -544,14 +588,17 @@ class Plot:
                                        "'function int : index, tuple : xyz_tuple ->color_code'",
                           good_values=lambda color_mode:
                           False if color_mode is None and colored_by is not None else
-                          False if color_mode == Plot._cm_column_index
-                                   or color_mode == Plot._cm_column_name
-                                   and table is None else True,
+                          False if (color_mode == Plot._cm_column_index
+                                    or color_mode == Plot._cm_column_name)
+                                    and table is None else True,
                           value_message="colored_by is not a valid mode"
                           if color_mode is None and colored_by is not None else
-                          "colored_by can't be a column index/name if table parameter is not set")
+                          "colored_by can't be a column index/name if table parameter is not set"
+                          if (color_mode == Plot._cm_column_index
+                              or color_mode == Plot._cm_column_name)
+                              and table is None else "is ok")
         if color_mode == Plot._cm_column_name:  # from column name to index
-            colored_by = table.get_column_index_from_name(colored_by)
+            colored_by = columns.index(colored_by)
             color_mode = Plot._cm_column_index
         # adding marker/fmt : (need to be after # color_mode )
         to_plot = (*to_plot, marker)
@@ -595,7 +642,7 @@ class Plot:
                 elif self._dim == 3:
                     to_plot = (x_group, y_group, z_group)
                 self._ax.plot(*(*to_plot, marker),
-                              **{**kwargs_plot, 'label':group , 'color': pastelize(colors_list.pop())})
+                              **{**kwargs_plot, 'label': group, 'color': pastelize(colors_list.pop())})
 
         elif color_mode == Plot._cm_function_color_code:
             if type(label) is str and len(label) != 0:  # label != from None and ""
@@ -611,9 +658,10 @@ class Plot:
                     if self._dim == 3:
                         dict_color_to_lines[color][2] += [z_plot[index]]
                 else:
-                    dict_color_to_lines[color] = [[x_plot[index]],
-                                                  [y_plot[index]]]
-                    if self._dim == 3:
+                    if self._dim == 2:
+                        dict_color_to_lines[color] = [[x_plot[index]],
+                                                      [y_plot[index]]]
+                    else:
                         dict_color_to_lines[color] = [[x_plot[index]],
                                                       [y_plot[index]],
                                                       [z_plot[index]]]
@@ -687,480 +735,172 @@ def show(block=True):
     plt.show(block=block)
 
 
-class Table:
-    def __init__(self, path, first_line=0, last_line=None, column_names=None, delimiter=r'(	|[ ])+',
-                 new_line=r'(	| )*(()|)', float_dot='.', number_format_character='',
-                 ignore="", print_tokens=False, print_error=False, header=None):
-
-        # dev args:
-        self._print_tokens = print_tokens
-        self._print_error = print_error
-        # init fields
-        self._path = path  # string
-        self._first_line = first_line  # int
-        if (last_line is not None and last_line < 0):
-            print("S_c_i_m_p_l_e E_r_r_o_r : last_line Argument must be >=1")
-            raise Exception()
-        self._last_line = last_line  # int
-        self._content_as_string = ""  # string
-        self._float_table = []  # string
-        self._delimiter = delimiter
-        self._new_line = new_line
-        self._float_dot = (r'\.' if float_dot == '.' else float_dot)  # reg_exp
-        self._number_format_character = number_format_character  # string
-        self._ignore = ignore  # reg_exp
-        # Map_reduce:
-        self._mapping = None
-        # import file
-        if isinstance(path, Table):
-            column_names = list(path.get_columns_names().keys())
-            if first_line == 1 and last_line is None:
-                self._float_table
-            else:
-                self._float_table = copy.deepcopy(path[max(0, first_line):last_line + 1] if last_line
-                                                  else path[max(0, first_line):])
-        elif type(path) is not str:
-            try:
-                self._float_table = [list(line)[:] for line in
-                                     (path[max(0, first_line):last_line + 1] if last_line else path[
-                                                                                               max(0, first_line):])]
-            # print('input considered as array-like')
-            except Exception:
-                print('Unsupported array-like object in input')
-                raise
-        else:
-            try:
-                in_file = open(path, 'r')
-                self._content_as_string = in_file.read()
-                in_file.close()
-                self._parse()
-            # print('input considered as path to file')
-            except OSError:
-                self._content_as_string = path
-                self._parse()
-            # print('input considered as string content')
-        if column_names is None or len(column_names) == 0:
-            if header is not None:
-                self._column_names = {str(self[header][i]): i for i in
-                                      range(len(self[header]))}  # list
-                del self[header]
-            else:
-                self._column_names = {}
-        else:
-            self._column_names = {column_names[i]: i for i in range(len(column_names))}  # list
-
-    def __contains__(self, elem_to_find):
-        for line in self.get_table():
-            for elem in line:
-                if elem_to_find == elem:
-                    return True
-        return False
-
-    def __str__(self):
-        return self.get_string()
-
-    def __unicode__(self):
-        return self.get_string()
-
-    def __repr__(self):
-        return str(self.get_table())
-
-    def __iter__(self):
-        return iter(self.get_table())
-
-    def __bool__(self):
-        return bool(len(self.get_table()))
-
-    def _from_col_name_to_int(self, t):
-        if type(t) == int:
-            return t
-        elif type(t) == str:
-            return self._column_names[t]
-        else:
-            return tuple({(self._column_names[elem] if type(elem) is str else elem) for elem in t})
-
-    def __getitem__(self, t):
-        '''
-
-        :param t: tuple/str : accès aux colonnes (nom ou numero (debut à 0), int : accès à une ligne, slice : accès à des lignes
-        :return:
-        '''
-        if type(t) in {slice, int}:
-            return self.get_table()[t]
-        if type(t) is str:
-            return self.get_table(t)
-        if type(t) is tuple:
-            t = self._from_col_name_to_int(t)
-            return self.get_table(t)
-
-    def __delitem__(self, t):
-        if type(t) in {slice, int}:
-            del self.get_table()[t]
-        if type(t) is str:
-            self._filter_by_columns_del_keep('del', t)
-        if type(t) is tuple:
-            self._filter_by_columns_del_keep('del', t)
-
-    def __len__(self):
-        return len(self.get_table())
-
-    def append(self, elem):
-        self.get_table().append(list(elem))
-        return self
-
-    def pop(self, columns_num_tuple, *columns_num):
-        if type(columns_num_tuple) is str:
-            columns = [columns_num_tuple]
-            for name in columns_num:
-                columns.append(name)
-            columns = tuple(columns)
-        else:
-            columns = columns_num_tuple
-        if type(columns) in {slice, int}:
-            popped = self.get_table()[columns]
-            del self.get_table()[columns]
-        elif type(columns) is str:
-            popped = self.get_table(columns)
-            self._filter_by_columns_del_keep('del', columns)
-        elif type(columns) is tuple:
-            popped = self.get_table(columns)
-            self._filter_by_columns_del_keep('del', columns)
-        return popped
-
-    def _parse(self):
-        # List of token names.
-        tokens = (
-            'delimiter',
-            'newLine',
-            'char'
-        )
-        # variable :
-        lineNumber = 0
-
-        # Regles :
-
-        def t_newLine(t):
-            r''
-            t.lexer.lineno += 1
-            return t
-
-        t_newLine.__doc__ = self._new_line
-
-        def t_delimiter(t):
-            r''
-            return t
-
-        t_delimiter.__doc__ = self._delimiter
-
-        def t_char(t):
-            r'.'
-            return t
-
-        t_ignore = self._ignore
-
-        def t_eof(t):
-            return t
-
-        # en cas d'ERROR :
-        def t_error(t):
-            if self._printError:
-                print("Error on char : '%s'" % t.value[0])  # dev
-            t.lexer.skip(1)
-
-        # Build du lexer
-        lexer = lex()
-        # On donne l'input au lexer
-        lexer.input(self._contentAsString)
-        # On build la string résultat :
-        currentLine = list()
-        currentChars = ''
-        tok = lexer.token()
-        last_tok = None
-        while tok:
-            if tok.lineno >= self._firstLine + 1 and (self._lastLine is None or tok.lineno <= self._lastLine + 1):
-                if tok.type == "newLine":
-                    currentLine.append(self._try_to_float(currentChars))
-                    currentChars = ''
-                    self._floatTable.append(currentLine)
-                    currentLine = []
-                elif tok.type == "delimiter":
-                    currentLine.append(self._try_to_float(currentChars))
-                    currentChars = ''
-                else:
-                    currentChars += tok.value
-            elif not (self._lastLine is None or tok.lineno <= self._lastLine + 1):
-                break
-            if self._printTokens:
-                print(tok)
-            tok = lexer.token()
-        if not tok and (self._lastLine is None or tok.lineno <= self._lastLine + 1):
-            currentLine.append(self._try_to_float(currentChars))
-            self._floatTable.append(currentLine)
-
-    def _try_to_float(self, s):
-        try:
-            chars_copied = s
-            chars_copied = chars_copied.replace(self._number_format_character, '')
-            if self._float_dot != '\.':
-                chars_copied = chars_copied.replace(self._float_dot, '.')
-            chars_copied = float(chars_copied)
-            if chars_copied % 1 == 0:
-                chars_copied = int(chars_copied)
-            return chars_copied
-        except ValueError:
-            return s
-
-    # public :
-    def get_columns_names(self):
-        return self._column_names
-
-    def set_columns_names(self, columns_num_tuple, *columns_num):
-        if type(columns_num_tuple) is str:
-            columns = [columns_num_tuple]
-            for name in columns_num:
-                columns.append(name)
-        else:
-            columns = columns_num_tuple
-        self._column_names = {columns[i]: i for i in range(len(columns))}
-
-    def keep_columns(self, columns_num_tuple, *columns_num):
-        return self._filter_by_columns_del_keep('keep', columns_num_tuple, *columns_num)
-
-    def _filter_by_columns_del_keep(self, del_or_keep, columns_num_tuple, *columns_num):
-        if type(columns_num_tuple) in {str, int}:
-            columns = [columns_num_tuple]
-            for name in columns_num:
-                columns.append(name)
-        else:
-            columns = columns_num_tuple
-        columns = self._from_col_name_to_int(columns)
-        for line in self:
-            i = 0
-            j = 0
-            while i < len(line):
-                if (del_or_keep == 'del' and i in columns) or (del_or_keep == 'keep' and i not in columns):
-                    del line[j]
-                    i += 1
-                else:
-                    j += 1
-                    i += 1
-        i = 0
-        j = 0
-        new_columns_names = dict()
-        for key in self._column_names.keys():
-            if (del_or_keep == 'del' and i not in columns) or (del_or_keep == 'keep' and i in columns):
-                new_columns_names[key] = j
-                j += 1
-            i += 1
-
-        self._column_names = new_columns_names
-
-        return self
-
-    def get_table(self, columns_num_tuple=None, *columns_num):
-        '''returns the table (list of list) of floats with None for empty fields'''
-        if columns_num_tuple is not None:
-            if type(columns_num_tuple) in {str, int}:
-                columns = [columns_num_tuple]
-                for name in columns_num:
-                    columns.append(name)
-            else:
-                columns = columns_num_tuple
-            columns = self._from_col_name_to_int(columns)
-            res = [[line[i] for i in range(len(line)) if i in columns] for line in self]
-            return res
-        else:
-            return self._float_table
-
-    def get_string(self, delimiter=None, new_line=None):
-        if delimiter == None: delimiter = self._delimiter
-        if new_line == None: new_line = self._new_line
-        self._content_as_string = ""
-        if delimiter == r'(	|[ ])+':
-            delimiter = ','
-        if new_line == r'(	| )*(()|)':
-            new_line = ''
-        new_line = new_line.replace("\n", "").replace("\t", "	")
-        delimiter = delimiter.replace("\n", "").replace("\t", "	")
-
-        self._content_as_string = new_line.join([delimiter.join([str(elem) for elem in line]) for line in self])
-
-        return self._content_as_string
-
-    def get_copy(self):
-        return copy.deepcopy(self)
-
 # #######
 # CSV I/O
 # #######
-def save_csv(path, delimiter=',', separator='\n'):
+def save_csv(path, array_like, separator='\n', delimiter=','):
+    """
+
+    :param path: path to file to open (will suppress previous content) or to create
+    :param array_like: 2dim array_like (list
+    :param separator:
+    :param delimiter:
+    :return:
+    """
+    type_value_checks(path, good_types=str, type_message='path should be a string')
+    type_value_checks(separator, good_types=str, type_message='separator should be a string')
+    type_value_checks(delimiter, good_types=str, type_message='delimiter should be a string')
+    type_value_checks(array_like, good_values=lambda array_like: is_2d_array_like_not_empty(array_like),
+                      value_message='array-like is not a 2d valid array-like')
     f = open(path, 'w')
-    f.write(self.get_string(delimiter, new_line))
+    f.write(separator.join([delimiter.join([str(elem) for elem in line]) for line in array_like]))
     f.close()
 
-def load_csv(path, delimiter=None, new_line=None):
+
+def load_csv(path, separator=r'\n', delimiter=','):
+    type_value_checks(path, good_types=str, type_message='path should be a string')
+    type_value_checks(separator, good_types=str, type_message='separator should be a string')
+    type_value_checks(delimiter, good_types=str, type_message='delimiter should be a string')
     f = open(path, 'r')
-    f.write(self.get_string(delimiter, new_line))
-
-    # Map_reduce :
-    def _init_mapping(self):
-        if self._mapping == None:
-            self._mapping = dict()
-            for line_num in range(len(self)):
-                self._mapping[line_num + 1] = [self[line_num]]
-
-    def reset_mapping(self):
-        self._mapping = dict()
-        for line_num in range(len(self)):
-            self._mapping[line_num + 1] = [self[line_num]]
-        return self
-
-    def get_mapping(self):
-        self._init_mapping()
-        return self._mapping
-
-    def get_mapping_as_table(self, flatten=False):
-
-        return [[key, self.get_mapping()[key]] if not flatten else [key]
-                                                                   + flatten_n_times(flatten - 1,
-                                                                                     self.get_mapping()[key])
-                for key in self.get_mapping()]
-
-    def _build_mr_task(self, key, value_s, f, new_mapping):
-        newpairs = f(key, value_s)
-        if newpairs is not None:
-            if type(newpairs) is list:
-                newpairs = f(key, value_s)
-                for newkey, newvalue in newpairs:
-                    if newkey in new_mapping:
-                        new_mapping[newkey].append(newvalue)
-                    else:
-                        new_mapping[newkey] = [newvalue]
-            elif type(newpairs) is tuple:
-                newkey, newvalue = f(key, value_s)
-                if newkey in new_mapping:
-                    new_mapping[newkey].append(newvalue)
-                else:
-                    new_mapping[newkey] = [newvalue]
-
-    class _M_r_thread(Thread):
-        def __init__(self, type, keys, f, new_mapping, table):
-            Thread.__init__(self)
-            self._type = type
-            self._keys = keys
-            self._f = f
-            self._new_mapping = new_mapping
-            self._table = table
-
-        def run(self):
-            if self._type == 'map':
-                for key in self._keys:
-                    for value in self._table._mapping[key]:
-                        self._table._build_mr_task(key, value, self._f, self._new_mapping)
-            elif self._type == 'reduce':
-                for key in self._keys:
-                    self._table._build_mr_task(key, self._table._mapping[key], self._f, self._new_mapping)
-            else:
-                print("error code 62786289629")
-
-    def _melt_mappings(self, mappings):
-        melted_mapping = dict()
-        for mapping in mappings:
-            for key in mapping:
-                if key in melted_mapping:
-                    melted_mapping[key] += mapping[key][:]
-                else:
-                    melted_mapping[key] = mapping[key][:]
-        return melted_mapping
-
-    def _perform_map_or_reduce(self, type, f, threads):
-        new_mappings = [{} for _ in range(threads)]
-        keys = list(self.get_mapping().keys())  # _init_mapping() ran during get_mapping
-        threads = min(threads, len(keys))
-        keys_parts = [[] for _ in range(threads)]
-        for i in range(len(keys)):
-            keys_parts[i % threads].append(keys[i])
-        threads_list = list()
-        for i in range(threads):
-            threads_list.append(self._M_r_thread(type, keys_parts[i], f, new_mappings[i], self))
-        for thread in threads_list:
-            thread.start()
-        for thread in threads_list:
-            thread.join()
-        self._mapping = self._melt_mappings(new_mappings)
-
-    def map(self, f, threads=multiprocessing.cpu_count()):
-        '''
-        f du type lambda key value : return (key, value)
-        :return: self (to chain)
-        '''
-        self._perform_map_or_reduce('map', f, threads)
-        return self
-
-    def reduce(self, f, threads=multiprocessing.cpu_count()):
-        '''
-        f : lambda key, values_list : key, value
-        :param f:
-        :return: self (to chain)
-        '''
-        self._perform_map_or_reduce('reduce', f, threads)
-        return self
+    as_string = f.read()
+    f.close()
+    return [[try_apply(elem, [int, float]) for elem in re.split(delimiter, line)] for line in
+            re.split(separator, as_string)]
 
 
-
-def _get_data(path):
+# ####
+# DATA
+# ####
+def _get_scimple_data_path(path):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path)
 
 
-def get_sample(id):
-    dic = {'xyz': "phenyl-Fe-porphyirine-C_o2-Me_4_rel.xyz",
-           'charges': 'C_h_a_r_g_e_s_phenyl-Fe-porphyirine-C_o2-Me_4_rel',
-           'surfaces': 'ek_In_t_p_C_o2_Me_4_graphene_W_r2_k.dat',
+def get_sample(id, cast=None):
+    dic = {'xyz': "phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz",
+           'charges': 'CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel',
+           'surfaces': 'ek_InTP_CO2_Me_4_graphene_W_r2_k.dat',
            'adults': 'adult.txt'}
     if id == 'xyz':
-        return Table(Table(_get_data(dic[id]), column_names=['rien', 'atom', 'x', 'y', 'z'],
-                           last_line=494)['atom', 'x', 'y', 'z'],
-                     column_names=['atom', 'x', 'y', 'z'])
+        res = [line[1:] for line in load_csv(_get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')[2:-1]]
     elif id == 'charges':
-        res = Table(Table(_get_data(dic[id]), header=1, last_line=494)['s', 'p', 'd'], column_names=['s', 'p', 'd'])
-        return res
+        res = [line[1:] for line in load_csv(_get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')[2:-1]]
     elif id == 'surfaces':
-        return Table(_get_data(dic[id]))
+        res = load_csv(_get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')
     elif id == 'adults':
-        return Table(_get_data(dic[id]), header=0, delimiter=',', last_line=100)
+        res = load_csv(_get_scimple_data_path(dic[id]))
+    return cast(res) if cast else res
 
 
 def run_example():
-    source = ''''''
-
-
-if __name__ == '__main__':
-    # run_example()
-    tab = get_sample('xyz')
-    print(tab)
-    Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50*math.sin(x/10),
+    source = '''
+    tab = get_sample('xyz', pd.DataFrame)
+    tab.columns = ['atom', 'x', 'y', 'z']
+    charges = get_sample('charges')
+    Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10),
                             marker='.', colored_by=lambda i, xy: xy[1][i], label='du noir au blanc') \
-        .add(x=range(100), y=lambda i, x: 50*math.sin(x/10)-100,
+        .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 100,
              marker='.', colored_by='#ff00ff', label='rose') \
-        .add(x=range(100), y=lambda i, x: 50*math.sin(x/10)-200,
+        .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 200,
              marker='.', colored_by=lambda i, xy: xy[1][i], label='du jaune au rouge') \
-        .add(x=range(100), y=lambda i, x: 50*math.sin(x/10)-300,
+        .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 300,
              marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[1][i]) % 3],
-             label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'})\
+             label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
         .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 400,
              marker='.', markersize=3,
              colored_by=lambda i, xy: '>-400' if xy[1][i] > -400 else '<=-400')
     Plot(3, title=':)').add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2),
-                            z=lambda i, x, y: (x * y) ** 2+8000,
+                            z=lambda i, x, y: (x * y) ** 2 + 8000,
                             marker='.', colored_by=lambda i, xy: xy[2][i], label='du noir au blanc') \
-        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2+5000,
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 + 5000,
              marker='.', colored_by='#ff00ff', label='rose') \
-        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2+2000,
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 + 2000,
              marker='.', colored_by=lambda i, xy: xy[2][i], label='du jaune au rouge') \
-        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2-1000,
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 - 1000,
              marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[2][i]) % 3],
              label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
-        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2-4000,
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 - 4000,
              marker='.', markersize=3,
-             colored_by=lambda i, xy: 'exterieur' if math.sqrt(xy[0][i]**2+xy[1][i]**2) > 1 else 'interieur')
+             colored_by=lambda i, xy: 'exterieur' if math.sqrt(xy[0][i] ** 2 + xy[1][i] ** 2) > 1 else 'interieur')
+
+    Plot(3, zlabel='z', bg_color='#ddddff', title="molecule over graphene") \
+        .add(tab, 'x', 'y', 'z', first_line=101, markersize=4, marker='.',
+             colored_by=lambda i, _: sum(charges[101+i])) \
+        .add(tab, 'x', 'y', 'z', last_line=100
+             , markersize=4, marker='o', colored_by='atom')
+    Plot(2, bg_color='#cccccc', title="2D z axis projection") \
+        .add(tab, 'x', 'y', last_line=100, colored_by='atom', marker='o') \
+        .add(tab, 'x', 'y', first_line=101, markersize=4, marker='x',
+             colored_by=lambda i, _: sum(charges[101+i][1:]))
+    Plot(2, bg_color='#cccccc', xlabel="x axis", ylabel="y axis", title="comparison") \
+        .add(tab, 'x', 'y', first_line=101, markersize=6, marker='o',
+             colored_by=lambda i, _: tab['z'][101+i],
+             label="z axis") \
+        .add(tab, 'x', 'y', first_line=101, markersize=4, marker='x',
+             colored_by=lambda i, _: sum(charges[101+i][1:]),
+             label="external electrons")
+    Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis", title="z dispersion") \
+        .add(tab, 'atom', 'z', markersize=6, marker='o', colored_by='atom',
+             label="z axis")
+    show(True)'''
+    print(source)
+    tab = get_sample('xyz', pd.DataFrame)
+    tab.columns = ['atom', 'x', 'y', 'z']
+    charges = get_sample('charges')
+    Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10),
+                            marker='.', colored_by=lambda i, xy: xy[1][i], label='du noir au blanc') \
+        .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 100,
+             marker='.', colored_by='#ff00ff', label='rose') \
+        .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 200,
+             marker='.', colored_by=lambda i, xy: xy[1][i], label='du jaune au rouge') \
+        .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 300,
+             marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[1][i]) % 3],
+             label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
+        .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 400,
+             marker='.', markersize=3,
+             colored_by=lambda i, xy: '>-400' if xy[1][i] > -400 else '<=-400')
+    Plot(3, title=':)').add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2),
+                            z=lambda i, x, y: (x * y) ** 2 + 8000,
+                            marker='.', colored_by=lambda i, xy: xy[2][i], label='du noir au blanc') \
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 + 5000,
+             marker='.', colored_by='#ff00ff', label='rose') \
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 + 2000,
+             marker='.', colored_by=lambda i, xy: xy[2][i], label='du jaune au rouge') \
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 - 1000,
+             marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[2][i]) % 3],
+             label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
+        .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 - 4000,
+             marker='.', markersize=3,
+             colored_by=lambda i, xy: 'exterieur' if math.sqrt(xy[0][i] ** 2 + xy[1][i] ** 2) > 1 else 'interieur')
+
+    Plot(3, zlabel='z', bg_color='#ddddff', title="molecule over graphene") \
+        .add(tab, 'x', 'y', 'z', first_line=101, markersize=4, marker='.',
+             colored_by=lambda i, _: sum(charges[101 + i])) \
+        .add(tab, 'x', 'y', 'z', last_line=100
+             , markersize=4, marker='o', colored_by='atom')
+    Plot(2, bg_color='#cccccc', title="2D z axis projection") \
+        .add(tab, 'x', 'y', last_line=100, colored_by='atom', marker='o') \
+        .add(tab, 'x', 'y', first_line=101, markersize=4, marker='x',
+             colored_by=lambda i, _: sum(charges[101 + i][1:]))
+    Plot(2, bg_color='#cccccc', xlabel="x axis", ylabel="y axis", title="comparison") \
+        .add(tab, 'x', 'y', first_line=101, markersize=6, marker='o',
+             colored_by=lambda i, _: tab['z'][101 + i],
+             label="z axis") \
+        .add(tab, 'x', 'y', first_line=101, markersize=4, marker='x',
+             colored_by=lambda i, _: sum(charges[101 + i][1:]),
+             label="external electrons")
+    Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis", title="z dispersion") \
+        .add(tab, 'atom', 'z', markersize=6, marker='o', colored_by='atom',
+             label="z axis")
     show(True)
+
+
+if __name__ == '__main__':
+    # run_example()
+    adult = get_sample('adults', np.array)
+    adult = pd.DataFrame(adult[1:100], columns=adult[0])
+    print(adult.columns)
+    Plot(2, title='salary over age', bg_color='#aa8888')\
+    .add(adult, adult['age'].astype(float), 'salary',
+         colored_by='#ffffff',
+         marker='.')
+    show()
