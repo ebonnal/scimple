@@ -2,14 +2,14 @@ from setuptools import setup
 
 setup(
     name='scimple',
-    version='1.6',
+    version='1.7',
     py_modules=['scimple'],
     install_requires=['matplotlib', 'numpy', 'pandas'],
     packages=['scimple_data'],
     package_data={'scimple_data': ['*']},
     url='http://github.com/EnzoBnl/Scimple',
-    license='',
+    license='',  # MIT
     author='Enzo Bonnal',
     author_email='enzobonnal@gmail.com',
-    description='Parse and Plot your data in 2 lines of code'
+    description='Plot your data scimply in 1 line'
 )
