@@ -175,8 +175,6 @@ def random_color_well_dispatched(n):
             0 if pas[0] != pas[1] or pas[0] != pas[2] else pas[0] - 1):
         index_of_pas_min = pas.index(min(pas))
         pas[index_of_pas_min] += 1
-
-    print(pas)
     colors = []
     for r in range(pas[0] + 1):
         for v in range(pas[1] + 1):
@@ -287,7 +285,6 @@ class Plot:
         if self._color_bar_nb == 3:
             raise ScimpleError("only 2 function-colored plots available")
         color_bar_subplot = self._fig.add_subplot(self._gs[3 if self._color_bar_nb == 1 else 0])
-        print(mini, maxi)
         color_bar_subplot.imshow(
             [[i] for i in np.arange(maxi, mini, (mini - maxi) / 100)] if self._color_bar_nb == 1 else
             [[i for i in np.arange(maxi, mini, (mini - maxi) / 100)]],
@@ -318,7 +315,6 @@ class Plot:
                 'column_index', 'column_name', 'color_code', 'function_float', 'function_color_code'
                 'function_str' or None if no mode match
         """
-        print(25, colored_by, nb_params(colored_by) if type(colored_by) is FuncType else None)
         if type(colored_by) is int:
             return Plot._cm_column_index
         if is_color_code(colored_by):
@@ -560,7 +556,6 @@ class Plot:
         # adding marker/fmt : (need to be after # color_mode )
         to_plot = (*to_plot, marker)
         # Plots following the color_mode
-        print(color_mode)
         if color_mode is None:
             if type(label) is str and len(label) != 0:  # label != from None and ""
                 kwargs_plot['label'] = label
@@ -833,7 +828,74 @@ class Table:
         return popped
 
     def _parse(self):
-        pass
+        # List of token names.
+        tokens = (
+            'delimiter',
+            'newLine',
+            'char'
+        )
+        # variable :
+        lineNumber = 0
+
+        # Regles :
+
+        def t_newLine(t):
+            r''
+            t.lexer.lineno += 1
+            return t
+
+        t_newLine.__doc__ = self._new_line
+
+        def t_delimiter(t):
+            r''
+            return t
+
+        t_delimiter.__doc__ = self._delimiter
+
+        def t_char(t):
+            r'.'
+            return t
+
+        t_ignore = self._ignore
+
+        def t_eof(t):
+            return t
+
+        # en cas d'ERROR :
+        def t_error(t):
+            if self._printError:
+                print("Error on char : '%s'" % t.value[0])  # dev
+            t.lexer.skip(1)
+
+        # Build du lexer
+        lexer = lex()
+        # On donne l'input au lexer
+        lexer.input(self._contentAsString)
+        # On build la string résultat :
+        currentLine = list()
+        currentChars = ''
+        tok = lexer.token()
+        last_tok = None
+        while tok:
+            if tok.lineno >= self._firstLine + 1 and (self._lastLine is None or tok.lineno <= self._lastLine + 1):
+                if tok.type == "newLine":
+                    currentLine.append(self._try_to_float(currentChars))
+                    currentChars = ''
+                    self._floatTable.append(currentLine)
+                    currentLine = []
+                elif tok.type == "delimiter":
+                    currentLine.append(self._try_to_float(currentChars))
+                    currentChars = ''
+                else:
+                    currentChars += tok.value
+            elif not (self._lastLine is None or tok.lineno <= self._lastLine + 1):
+                break
+            if self._printTokens:
+                print(tok)
+            tok = lexer.token()
+        if not tok and (self._lastLine is None or tok.lineno <= self._lastLine + 1):
+            currentLine.append(self._try_to_float(currentChars))
+            self._floatTable.append(currentLine)
 
     def _try_to_float(self, s):
         try:
@@ -928,10 +990,17 @@ class Table:
     def get_copy(self):
         return copy.deepcopy(self)
 
-    # export
-    def save(self, path, delimiter=None, new_line=None):
-        f = open(path, 'w')
-        f.write(self.get_string(delimiter, new_line))
+# #######
+# CSV I/O
+# #######
+def save_csv(path, delimiter=',', separator='\n'):
+    f = open(path, 'w')
+    f.write(self.get_string(delimiter, new_line))
+    f.close()
+
+def load_csv(path, delimiter=None, new_line=None):
+    f = open(path, 'r')
+    f.write(self.get_string(delimiter, new_line))
 
     # Map_reduce :
     def _init_mapping(self):
@@ -1068,6 +1137,7 @@ def run_example():
 if __name__ == '__main__':
     # run_example()
     tab = get_sample('xyz')
+    print(tab)
     Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50*math.sin(x/10),
                             marker='.', colored_by=lambda i, xy: xy[1][i], label='du noir au blanc') \
         .add(x=range(100), y=lambda i, x: 50*math.sin(x/10)-100,
