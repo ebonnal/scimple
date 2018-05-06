@@ -1,0 +1,7 @@
+*
+!.gitignore
+!scimple/scimple.py
+!scimple/scimple_data
+!scimple/dist
+!scimple/setup.py
+!notebook/sample.ipynb

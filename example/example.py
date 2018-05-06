@@ -1,6 +1,6 @@
 
 import scimple as scm
-
+print(scm)
 # example :
 
 
