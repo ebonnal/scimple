@@ -38,10 +38,10 @@ inf = float('inf')
 def flatten_n_times(n, l):
     n = int(n)
     for _ in range(n):
-        if any(type(elem) is list for elem in l):
+        if any(issubclass(type(elem), Collection) for elem in l):
             res = []
             for elem in l:
-                res += elem if type(elem) is list else [elem]
+                res += list(elem) if issubclass(type(elem), Collection) else [elem]
             l = res
     return l
 
@@ -73,11 +73,11 @@ def try_apply(x, callable_or_collables):
 # PLOTS TOOLS
 # #####
 def xgrid(a, b, p):
-    return list(flatten_n_times(1, [[i] * math.ceil((b - a) / p) for i in np.arange(a, b, p)]))
+    return flatten_n_times(1, [[i] * math.ceil((b - a) / p) for i in np.arange(a, b, p)])
 
 
 def ygrid(a, b, p):
-    return list(flatten_n_times(1, [[i for i in np.arange(a, b, p)] for _ in np.arange(a, b, p)]))
+    return flatten_n_times(1, [[i for i in np.arange(a, b, p)] for _ in np.arange(a, b, p)])
 
 
 # #####
@@ -727,7 +727,7 @@ class Plot:
         else:
             raise Exception("should never happen 4567884565")
         if self._at_least_one_label_defined:
-            self._ax.legend(loc='upper right', shadow=True).draggable()
+            self._ax.legend(loc='upper right', shadow=True, facecolor=self._ax.get_facecolor()).draggable()
         return self
 
 
@@ -895,12 +895,5 @@ def run_example():
 
 
 if __name__ == '__main__':
-    # run_example()
-    adult = get_sample('adults', np.array)
-    adult = pd.DataFrame(adult[1:100], columns=adult[0])
-    print(adult.columns)
-    Plot(2, title='salary over age', bg_color='#aa8888')\
-    .add(adult, adult['age'].astype(float), 'salary',
-         colored_by='#ffffff',
-         marker='.')
-    show()
+    print(xgrid(1,4,0.5))
+    run_example()

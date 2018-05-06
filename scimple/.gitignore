@@ -1,2 +1,7 @@
-.idea
-test.txt
+*
+!.gitignore
+!scimple.py
+!scimple_data
+!dist
+!setup.py
+!sample.ipynb
