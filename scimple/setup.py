@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='scimple',
-    version='1.7',
+    version='1.7.1',
     py_modules=['scimple'],
     install_requires=['matplotlib', 'numpy', 'pandas'],
     packages=['scimple_data'],
