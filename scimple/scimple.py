@@ -397,7 +397,7 @@ class Plot:
                 function int : index, tuple : xyz_tuple ->(color_code, str_label)
                 function int : index, tuple : xyz_tuple ->str_class
         :param marker:
-            str : single character (matplotlib marker)
+            str : single character (matplotlib marker) or 'bar' to call plt.bar (bar plot)
         :param markersize:
             int
         :return:
@@ -492,7 +492,7 @@ class Plot:
                                    "verifying : len(z) == len(x)" if table is not None and isinstance(z,
                                                                                                       Collection) else
                                    "z must be a collection verifying : len(z) > 0" if isinstance(z, Collection) else
-                                   "z function must take exactly 3 argument "+
+                                   "z function must take exactly 3 argument " +
                                    "(int index, type(x element), type(y element)))"
                                    if callable(z)
                                    else "z value invalid")
@@ -502,17 +502,19 @@ class Plot:
                           type_message="label must be a string or a dict colorcode : label")
 
         # marker
-        type_value_checks(marker, good_types=(str, NoneType),
+        type_value_checks(marker, good_types=str,
                           type_message="marker must be a string",
-                          good_values=lambda marker: not marker or len(marker) == 1,
-                          value_message="marker can only be a matplotlib marker like 'o' or '-' (one character)")
-
+                          good_values=lambda marker: len(marker) == 1 or marker == 'bar' and self._dim == 2,
+                          value_message="'bar' plot is only available in 2D plot" if marker == 'bar' else
+                          "marker can only be a matplotlib marker like 'o' or '-' " +
+                          "(one character) or 'bar'")
         # markersize
         type_value_checks(markersize, good_types=int,
                           type_message="markersize must be an int",
                           good_values=lambda markersize: markersize >= 0,
                           value_message="marker musr be positive")
-        kwargs_plot['markersize'] = markersize
+        if len(marker) == 1:
+            kwargs_plot['markersize'] = markersize
 
         # arrays to plot
         z_plot = None
@@ -590,24 +592,23 @@ class Plot:
                           False if color_mode is None and colored_by is not None else
                           False if (color_mode == Plot._cm_column_index
                                     or color_mode == Plot._cm_column_name)
-                                    and table is None else True,
+                                   and table is None else True,
                           value_message="colored_by is not a valid mode"
                           if color_mode is None and colored_by is not None else
                           "colored_by can't be a column index/name if table parameter is not set"
                           if (color_mode == Plot._cm_column_index
                               or color_mode == Plot._cm_column_name)
-                              and table is None else "is ok")
+                             and table is None else "is ok")
         if color_mode == Plot._cm_column_name:  # from column name to index
             colored_by = columns.index(colored_by)
             color_mode = Plot._cm_column_index
-        # adding marker/fmt : (need to be after # color_mode )
-        to_plot = (*to_plot, marker)
         # Plots following the color_mode
         if color_mode is None:
             if type(label) is str and len(label) != 0:  # label != from None and ""
                 kwargs_plot['label'] = label
                 self._at_least_one_label_defined = True
-            self._ax.plot(*to_plot, **kwargs_plot)
+            self._ax.plot(*(*to_plot, marker), **kwargs_plot) if len(marker) == 1 \
+                else self._ax.bar(*to_plot, **{**kwargs_plot, 'alpha': 0.5})
         elif color_mode == Plot._cm_color_code:
             if type(label) is str and len(label) != 0:  # label != from None and ""
                 kwargs_plot['label'] = label
@@ -616,7 +617,8 @@ class Plot:
                 kwargs_plot['label'] = label[colored_by]
                 self._at_least_one_label_defined = True
             kwargs_plot['color'] = colored_by
-            self._ax.plot(*to_plot, **kwargs_plot)
+            self._ax.plot(*(*to_plot, marker), **kwargs_plot) if len(marker) == 1 \
+                else self._ax.bar(*to_plot, **{**kwargs_plot, 'alpha': 0.5})
         elif color_mode in [Plot._cm_column_index, Plot._cm_function_str]:
             self._at_least_one_label_defined = True
             xyz = (x_plot, y_plot, z_plot) if self._dim == 3 else (x_plot, y_plot)
@@ -642,7 +644,10 @@ class Plot:
                 elif self._dim == 3:
                     to_plot = (x_group, y_group, z_group)
                 self._ax.plot(*(*to_plot, marker),
-                              **{**kwargs_plot, 'label': group, 'color': pastelize(colors_list.pop())})
+                              **{**kwargs_plot, 'label': group,
+                                 'color': pastelize(colors_list.pop())}) if len(marker) == 1 \
+                    else self._ax.bar(*to_plot, **{**kwargs_plot, 'label': group,
+                                 'color': pastelize(colors_list.pop()), 'alpha': 0.5})
 
         elif color_mode == Plot._cm_function_color_code:
             if type(label) is str and len(label) != 0:  # label != from None and ""
@@ -672,7 +677,9 @@ class Plot:
                     self._at_least_one_label_defined = True
                 if self._dim == 2:
                     self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], marker),
-                                  **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
+                                  **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"}) if len(marker) == 1 \
+                        else self._ax.bar(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
+                                          **{**kwargs_plot, 'color': color, 'alpha': 0.5})
                 elif self._dim == 3:
                     self._ax.plot(
                         *(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
@@ -717,7 +724,9 @@ class Plot:
             if self._dim == 2:
                 for color in dict_color_to_lines:
                     self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], marker),
-                                  **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"})
+                                  **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"}) if len(marker) == 1 \
+                        else self._ax.bar(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
+                                          **{**kwargs_plot, 'color': color, 'alpha': 0.5})
             elif self._dim == 3:
                 for color in dict_color_to_lines:
                     self._ax.plot(
@@ -738,34 +747,34 @@ def show(block=True):
 # #######
 # CSV I/O
 # #######
-def save_csv(path, array_like, separator='\n', delimiter=','):
+def save_csv(path, array_like, delimiter='\n', separator=','):
     """
 
     :param path: path to file to open (will suppress previous content) or to create
     :param array_like: 2dim array_like (list
-    :param separator:
     :param delimiter:
+    :param separator:
     :return:
     """
     type_value_checks(path, good_types=str, type_message='path should be a string')
-    type_value_checks(separator, good_types=str, type_message='separator should be a string')
     type_value_checks(delimiter, good_types=str, type_message='delimiter should be a string')
+    type_value_checks(separator, good_types=str, type_message='separator should be a string')
     type_value_checks(array_like, good_values=lambda array_like: is_2d_array_like_not_empty(array_like),
                       value_message='array-like is not a 2d valid array-like')
     f = open(path, 'w')
-    f.write(separator.join([delimiter.join([str(elem) for elem in line]) for line in array_like]))
+    f.write(delimiter.join([separator.join([str(elem) for elem in line]) for line in array_like]))
     f.close()
 
 
-def load_csv(path, separator=r'\n', delimiter=','):
+def load_csv(path, delimiter=r'\n', sep=','):
     type_value_checks(path, good_types=str, type_message='path should be a string')
-    type_value_checks(separator, good_types=str, type_message='separator should be a string')
     type_value_checks(delimiter, good_types=str, type_message='delimiter should be a string')
+    type_value_checks(sep, good_types=str, type_message='sep should be a string')
     f = open(path, 'r')
     as_string = f.read()
     f.close()
-    return [[try_apply(elem, [int, float]) for elem in re.split(delimiter, line)] for line in
-            re.split(separator, as_string)]
+    return [[try_apply(elem, [int, float]) for elem in re.split(sep, line)] for line in
+            re.split(delimiter, as_string)]
 
 
 # ####
@@ -841,6 +850,9 @@ def run_example():
     Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis", title="z dispersion") \
         .add(tab, 'atom', 'z', markersize=6, marker='o', colored_by='atom',
              label="z axis")
+    Plot(2, bg_color = "#44bb44").add(x=range(5), y=[15]+[random.randint(1, 10) for _ in range(4)], marker='bar',
+                colored_by=lambda i, xy: xy[1][i]) \
+        .add(x=range(-1,6), y=[5] * 7, colored_by='#bb5555')
     show(True)'''
     print(source)
     tab = get_sample('xyz', pd.DataFrame)
@@ -891,9 +903,12 @@ def run_example():
     Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis", title="z dispersion") \
         .add(tab, 'atom', 'z', markersize=6, marker='o', colored_by='atom',
              label="z axis")
+    Plot(2, bg_color="#44bb44").add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
+                                    colored_by=lambda i, xy: xy[1][i]) \
+        .add(x=range(-1, 6), y=[5] * 7, colored_by='#bb5555')
     show(True)
 
 
 if __name__ == '__main__':
-    print(xgrid(1,4,0.5))
-    run_example()
+    # run_example()
+    show()

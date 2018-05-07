@@ -2,11 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="6737747e-e15e-4eb2-bb88-62c32edc0fa2" name="Default" comment="">
-      <change beforePath="$PROJECT_DIR$/.gitignore" afterPath="" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change beforePath="$PROJECT_DIR$/notebook/sample.ipynb" afterPath="$PROJECT_DIR$/notebook/sample.ipynb" />
-      <change beforePath="$PROJECT_DIR$/scimple/scimple.egg-info/PKG-INFO" afterPath="$PROJECT_DIR$/scimple/scimple.egg-info/PKG-INFO" />
-      <change beforePath="$PROJECT_DIR$/scimple/setup.py" afterPath="$PROJECT_DIR$/scimple/setup.py" />
+      <change beforePath="$PROJECT_DIR$/scimple/scimple.py" afterPath="$PROJECT_DIR$/scimple/scimple.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -17,12 +14,17 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="scimple.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="scimple.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/scimple/scimple.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="126">
-              <caret line="22" column="8" lean-forward="false" selection-start-line="22" selection-start-column="8" selection-end-line="22" selection-end-column="8" />
-              <folding />
+            <state relative-caret-position="345">
+              <caret line="854" column="60" lean-forward="false" selection-start-line="854" selection-start-column="60" selection-end-line="854" selection-end-column="60" />
+              <folding>
+                <element signature="e#84#98#0" expanded="true" />
+                <element signature="e#10709#11706#0" expanded="true" />
+                <element signature="e#11868#33362#0" expanded="true" />
+                <element signature="e#34991#35734#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -37,7 +39,7 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="example.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="example.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/example/example.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="216">
@@ -93,6 +95,9 @@
       <find>print(</find>
       <find>run</find>
       <find>data</find>
+      <find>:)</find>
+      <find>._ax.plot</find>
+      <find>self._ax</find>
     </findStrings>
     <replaceStrings>
       <replace>==</replace>
@@ -118,13 +123,13 @@
         <option value="$PROJECT_DIR$/example.py" />
         <option value="$PROJECT_DIR$/example/example.py" />
         <option value="$PROJECT_DIR$/scimple/__init__.py" />
-        <option value="$PROJECT_DIR$/scimple/scimple.py" />
         <option value="$PROJECT_DIR$/.gitignore" />
         <option value="$PROJECT_DIR$/scimple/setup.py" />
+        <option value="$PROJECT_DIR$/scimple/scimple.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="x" value="200" />
     <option name="width" value="1166" />
     <option name="height" value="728" />
@@ -176,6 +181,11 @@
               <item name="scimple1" type="462c0819:PsiDirectoryNode" />
               <item name="example" type="462c0819:PsiDirectoryNode" />
             </path>
+            <path>
+              <item name="scimple1" type="b2602c69:ProjectViewProjectNode" />
+              <item name="scimple1" type="462c0819:PsiDirectoryNode" />
+              <item name="scimple" type="462c0819:PsiDirectoryNode" />
+            </path>
           </expand>
           <select />
         </subPane>
@@ -185,7 +195,7 @@
     </panes>
   </component>
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../Decelle" />
     <property name="run.code.analysis.last.selected.profile" value="pProject Default" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
@@ -201,7 +211,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python.example (2)">
+  <component name="RunManager" selected="Python.scimple">
     <configuration name="example (1)" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -318,8 +328,8 @@
     </list>
     <recent_temporary>
       <list size="5">
-        <item index="0" class="java.lang.String" itemvalue="Python.example (2)" />
-        <item index="1" class="java.lang.String" itemvalue="Python.scimple" />
+        <item index="0" class="java.lang.String" itemvalue="Python.scimple" />
+        <item index="1" class="java.lang.String" itemvalue="Python.example (2)" />
         <item index="2" class="java.lang.String" itemvalue="Python.example" />
         <item index="3" class="java.lang.String" itemvalue="Python.example (1)" />
         <item index="4" class="java.lang.String" itemvalue="Python.sample" />
@@ -343,13 +353,14 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="1382" height="744" extended-state="7" />
+    <frame x="-8" y="-8" width="1382" height="744" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.18005952" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.27914613" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32840723" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="WINDOWED" visible="false" show_stripe_button="true" weight="0.27914613" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" x="0" y="22" width="1362" height="706" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33004925" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.20811655" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
@@ -361,7 +372,6 @@
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
@@ -369,7 +379,15 @@
     <option name="myLimit" value="2678400000" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager />
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/scimple/scimple1-6-9.py</url>
+          <line>1985</line>
+        </line-breakpoint>
+      </breakpoints>
+      <option name="time" value="1" />
+    </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
@@ -377,7 +395,12 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -409,7 +432,12 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
-          <folding />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -441,7 +469,12 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="6052">
           <caret line="356" column="54" lean-forward="false" selection-start-line="356" selection-start-column="54" selection-end-line="356" selection-end-column="54" />
-          <folding />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -473,7 +506,12 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="5933">
           <caret line="357" column="5" lean-forward="false" selection-start-line="357" selection-start-column="5" selection-end-line="357" selection-end-column="5" />
-          <folding />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -489,7 +527,12 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="6290">
           <caret line="377" column="43" lean-forward="false" selection-start-line="377" selection-start-column="43" selection-end-line="377" selection-end-column="43" />
-          <folding />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -499,7 +542,12 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="3570">
           <caret line="216" column="13" lean-forward="false" selection-start-line="216" selection-start-column="13" selection-end-line="216" selection-end-column="13" />
-          <folding />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -510,7 +558,12 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1904">
           <caret line="117" column="10" lean-forward="true" selection-start-line="117" selection-start-column="10" selection-end-line="117" selection-end-column="10" />
-          <folding />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -521,7 +574,12 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="3451">
           <caret line="209" column="9" lean-forward="false" selection-start-line="209" selection-start-column="9" selection-end-line="209" selection-end-column="9" />
-          <folding />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -531,7 +589,12 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="3451">
           <caret line="209" column="9" lean-forward="false" selection-start-line="209" selection-start-column="9" selection-end-line="209" selection-end-column="9" />
-          <folding />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -546,14 +609,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="72">
           <caret line="4" column="26" lean-forward="false" selection-start-line="4" selection-start-column="26" selection-end-line="4" selection-end-column="26" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/scimple/scimple.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="126">
-          <caret line="22" column="8" lean-forward="false" selection-start-line="22" selection-start-column="8" selection-end-line="22" selection-end-column="8" />
           <folding />
         </state>
       </provider>
@@ -579,6 +634,45 @@
         <state relative-caret-position="216">
           <caret line="12" column="0" lean-forward="false" selection-start-line="12" selection-start-column="0" selection-end-line="12" selection-end-column="0" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../Decelle/sandbox.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="270">
+          <caret line="24" column="14" lean-forward="true" selection-start-line="24" selection-start-column="14" selection-end-line="24" selection-end-column="14" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/scimple/scimple1-6-9.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="249">
+          <caret line="1972" column="17" lean-forward="true" selection-start-line="1972" selection-start-column="17" selection-end-line="1972" selection-end-column="17" />
+          <folding>
+            <element signature="e#0#38#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/Applications/Anaconda3/Lib/site-packages/matplotlib/artist.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="194">
+          <caret line="880" column="0" lean-forward="false" selection-start-line="880" selection-start-column="0" selection-end-line="880" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/scimple/scimple.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="345">
+          <caret line="854" column="60" lean-forward="false" selection-start-line="854" selection-start-column="60" selection-end-line="854" selection-end-column="60" />
+          <folding>
+            <element signature="e#84#98#0" expanded="true" />
+            <element signature="e#10709#11706#0" expanded="true" />
+            <element signature="e#11868#33362#0" expanded="true" />
+            <element signature="e#34991#35734#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
