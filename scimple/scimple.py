@@ -357,7 +357,7 @@ class Plot:
         return None
 
     def add(self, table=None, x=None, y=None, z=None, first_line=0, last_line=None,
-            label=None, colored_by=None, marker='-', markersize=9):
+            label=None, colored_by=None, marker='-', markersize=None):
         """
 
         :param table:
@@ -399,7 +399,7 @@ class Plot:
         :param marker:
             str : single character (matplotlib marker) or 'bar' to call plt.bar (bar plot)
         :param markersize:
-            int
+            int : size of marker or alpha of color if bar plot
         :return:
         """
         # first_line
@@ -509,12 +509,18 @@ class Plot:
                           "marker can only be a matplotlib marker like 'o' or '-' " +
                           "(one character) or 'bar'")
         # markersize
-        type_value_checks(markersize, good_types=int,
-                          type_message="markersize must be an int",
-                          good_values=lambda markersize: markersize >= 0,
-                          value_message="marker musr be positive")
+        if not markersize:
+            markersize = 9 if len(marker) == 1 else 1
+        type_value_checks(markersize, good_types={int, float},
+                          type_message="markersize must be an int or a float",
+                          good_values=lambda markersize: (markersize >= 0 and type(markersize) is int) or
+                                                         (marker == 'bar' and type(markersize) is float),
+                          value_message="marker must be a float between 0 and 1" if marker == 'bar' else
+                                        "marker must be a positive integer")
         if len(marker) == 1:
             kwargs_plot['markersize'] = markersize
+        else:
+            kwargs_plot['alpha'] = markersize
 
         # arrays to plot
         z_plot = None
@@ -608,7 +614,7 @@ class Plot:
                 kwargs_plot['label'] = label
                 self._at_least_one_label_defined = True
             self._ax.plot(*(*to_plot, marker), **kwargs_plot) if len(marker) == 1 \
-                else self._ax.bar(*to_plot, **{**kwargs_plot, 'alpha': 0.5})
+                else self._ax.bar(*to_plot, **kwargs_plot)
         elif color_mode == Plot._cm_color_code:
             if type(label) is str and len(label) != 0:  # label != from None and ""
                 kwargs_plot['label'] = label
@@ -618,7 +624,7 @@ class Plot:
                 self._at_least_one_label_defined = True
             kwargs_plot['color'] = colored_by
             self._ax.plot(*(*to_plot, marker), **kwargs_plot) if len(marker) == 1 \
-                else self._ax.bar(*to_plot, **{**kwargs_plot, 'alpha': 0.5})
+                else self._ax.bar(*to_plot, **kwargs_plot)
         elif color_mode in [Plot._cm_column_index, Plot._cm_function_str]:
             self._at_least_one_label_defined = True
             xyz = (x_plot, y_plot, z_plot) if self._dim == 3 else (x_plot, y_plot)
@@ -647,7 +653,7 @@ class Plot:
                               **{**kwargs_plot, 'label': group,
                                  'color': pastelize(colors_list.pop())}) if len(marker) == 1 \
                     else self._ax.bar(*to_plot, **{**kwargs_plot, 'label': group,
-                                 'color': pastelize(colors_list.pop()), 'alpha': 0.5})
+                                 'color': pastelize(colors_list.pop())})
 
         elif color_mode == Plot._cm_function_color_code:
             if type(label) is str and len(label) != 0:  # label != from None and ""
@@ -679,7 +685,7 @@ class Plot:
                     self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], marker),
                                   **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"}) if len(marker) == 1 \
                         else self._ax.bar(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
-                                          **{**kwargs_plot, 'color': color, 'alpha': 0.5})
+                                          **{**kwargs_plot, 'color': color})
                 elif self._dim == 3:
                     self._ax.plot(
                         *(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
@@ -726,7 +732,7 @@ class Plot:
                     self._ax.plot(*(dict_color_to_lines[color][0], dict_color_to_lines[color][1], marker),
                                   **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"}) if len(marker) == 1 \
                         else self._ax.bar(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
-                                          **{**kwargs_plot, 'color': color, 'alpha': 0.5})
+                                          **{**kwargs_plot, 'color': color})
             elif self._dim == 3:
                 for color in dict_color_to_lines:
                     self._ax.plot(
@@ -850,9 +856,11 @@ def run_example():
     Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis", title="z dispersion") \
         .add(tab, 'atom', 'z', markersize=6, marker='o', colored_by='atom',
              label="z axis")
-    Plot(2, bg_color = "#44bb44").add(x=range(5), y=[15]+[random.randint(1, 10) for _ in range(4)], marker='bar',
-                colored_by=lambda i, xy: xy[1][i]) \
-        .add(x=range(-1,6), y=[5] * 7, colored_by='#bb5555')
+    Plot(2, bg_color="#44bb44").add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
+                                    colored_by=lambda i, xy: xy[1][i]) \
+        .add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
+             colored_by=lambda i, xy: xy[1][i], markersize=0.5) \
+        .add(x=range(-1, 6), y=[5] * 7, colored_by='#bb5555')
     show(True)'''
     print(source)
     tab = get_sample('xyz', pd.DataFrame)
@@ -905,10 +913,13 @@ def run_example():
              label="z axis")
     Plot(2, bg_color="#44bb44").add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
                                     colored_by=lambda i, xy: xy[1][i]) \
+        .add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
+             colored_by=lambda i, xy: xy[1][i], markersize=0.5) \
         .add(x=range(-1, 6), y=[5] * 7, colored_by='#bb5555')
+
     show(True)
 
 
 if __name__ == '__main__':
-    # run_example()
-    show()
+    run_example()
+
