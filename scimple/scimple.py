@@ -253,6 +253,7 @@ class Plot:
         :param borders: Collection of int of length dim*2, settings axes limits
         :param bg_color: a valid color code str
         """
+        self._magic = set()
         self._at_least_one_label_defined = False
         self._color_bar_nb = 0
         self._fig = plt.figure()
@@ -304,6 +305,8 @@ class Plot:
         self._color_bar_nb += 1
         if self._color_bar_nb == 3:
             raise ScimpleError("only 2 function-colored plots available")
+        if 'invert_color_bars' in self._magic:
+            self._color_bar_nb = [2, 1][self._color_bar_nb-1]
         color_bar_subplot = self._fig.add_subplot(self._gs[3 if self._color_bar_nb == 1 else 0])
         color_bar_subplot.imshow(
             [[i] for i in np.arange(maxi, mini, (mini - maxi) / 100)] if self._color_bar_nb == 1 else
@@ -325,6 +328,16 @@ class Plot:
             if color_bar_label:
                 color_bar_subplot.set_xlabel(color_bar_label)
             color_bar_subplot.xaxis.tick_top()
+
+    def magic(self, key):
+        """
+
+        :param key: str, one of :
+            'invert_color_bars' : choose red to yellow colorbar first
+        :return: self
+        """
+        self._magic.add(key)
+        return self
 
     @staticmethod
     def _coloring_mode(colored_by, test_index, xyz_tuple):
@@ -514,7 +527,8 @@ class Plot:
         type_value_checks(markersize, good_types={int, float},
                           type_message="markersize must be an int or a float",
                           good_values=lambda markersize: (markersize >= 0 and type(markersize) is int) or
-                                                         (marker == 'bar' and type(markersize) is float),
+                                                         (marker == 'bar' and type(markersize) is float and
+                                                          0 <= markersize <= 1),
                           value_message="marker must be a float between 0 and 1" if marker == 'bar' else
                                         "marker must be a positive integer")
         if len(marker) == 1:
@@ -892,7 +906,7 @@ def run_example():
              marker='.', markersize=3,
              colored_by=lambda i, xy: 'exterieur' if math.sqrt(xy[0][i] ** 2 + xy[1][i] ** 2) > 1 else 'interieur')
 
-    Plot(3, zlabel='z', bg_color='#ddddff', title="molecule over graphene") \
+    Plot(3, zlabel='z', bg_color='#ddddff', title="molecule over graphene").magic('invert_color_bars') \
         .add(tab, 'x', 'y', 'z', first_line=101, markersize=4, marker='.',
              colored_by=lambda i, _: sum(charges[101 + i])) \
         .add(tab, 'x', 'y', 'z', last_line=100
