@@ -2,28 +2,180 @@
 SCIMPLE, Parse and Plot scimply in 2 lines
 Maintainer: enzobonnal@gmail.com
 """
+import time
 import inspect
 import math
 import os
 import random
 import re
 from collections import Collection, Iterable
-
+from subprocess import Popen, PIPE, TimeoutExpired
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib import cm
 from matplotlib import gridspec
 from mpl_toolkits.mplot3d import Axes3D
-
+import logging
 _ = Axes3D
 
+# #####
+# ERROR
+# #####
 
 class ScimpleError(Exception):
     """module specific Errors"""
 
+# #####
+# PYSPARK
+# #####
+_sc = None
+_spark = None
+
+def sc_spark():
+    global _sc, _spark
+    if _sc:  # spark already running
+        return _sc, _spark
+    try:
+        import pyspark
+        _sc = pyspark.SparkContext()
+        _spark = pyspark.SQLContext(_sc)
+    except:
+        raise ValueError('pyspark not available')
+    return _sc, _spark
 
 # #####
+# KAFKA
+# #####
+
+class Kafka:
+    """
+    kafka tools for windows
+    KAFKA_HOME can be set (overwritten by explicit
+    """
+    is_running = False
+    home = os.environ['KAFKA_HOME'] if 'KAFKA_HOME' in os.environ else None
+    topics =dict()
+    zoo = None
+    kafka = None
+    time = None
+    window = 5
+    scc = None
+    dstream = None
+    is_running_scc = False
+    @staticmethod
+    def create_dstream(topic, window=10):
+        """
+        create e sparkstreamingcontext linked to a subject and a dstream
+        :param topic:  str
+        :param window: int seconds for scc buffer window
+        :return: dstream
+        """
+        if not Kafka.scc or not Kafka.dstream or not Kafka.is_running_scc:
+            sc, _ = sc_spark()
+            from pyspark.streaming import StreamingContext
+            from pyspark.streaming.kafka import KafkaUtils
+            Kafka.scc = StreamingContext(sc, window)
+            Kafka.dstream = KafkaUtils.createStream(Kafka.scc , 'localhost:2181', 'sparkit', {topic: 1})
+            return Kafka.dstream
+        else:
+            return Kafka.dstream
+
+    @staticmethod
+    def start(home=None, window=5):
+        """
+        :param window : window in seconds
+        :param home: path to kafka home directory
+        :return: None
+        """
+        if Kafka.is_running:
+            raise Warning('Kafka is already running')
+        else:
+            Kafka.window = window
+            if home:
+                Kafka.home = home
+            if not Kafka.home:
+                raise ValueError('please set KAFKA_HOME or provide it as start method argument')
+            Kafka.zoo = Popen([Kafka.home+'/bin/windows/zookeeper-server-start.bat',
+                             Kafka.home+'/config/zookeeper.properties'],
+                              universal_newlines=True)
+            time.sleep(3)
+            kafka_well_started = False
+            while not kafka_well_started:
+                try:
+                    Kafka.kafka = Popen([Kafka.home + '/bin/windows/kafka-server-start.bat',
+                                 Kafka.home + '/config/server.properties'],
+                                    universal_newlines=True)
+                    Kafka.kafka.wait(10)
+                    Popen([Kafka.home + '/bin/windows/kafka-server-stop.bat',
+                           Kafka.home + '/config/server.properties']).wait()
+                except TimeoutExpired:
+                    kafka_well_started = True
+                #if Kafka.kafka.poll() is None:  # process en cours bien lancé
+
+            Kafka.is_running = True
+            Kafka.time = time.time()
+
+    @staticmethod
+    def talk(topic, message):
+        """
+        :param message : str
+        :param topic: str : existing topic
+        :return: None
+        """
+        if Kafka.scc and not Kafka.is_running_scc:
+            Kafka.scc.start()
+            Kafka.is_running_scc = True
+        if not Kafka.is_running:
+            raise ValueError('Kafka is not running yet')
+        if topic not in Kafka.topics:
+            Kafka.topics[topic] = [message]
+        else:
+            Kafka.topics[topic].append(message)
+        if time.time() - Kafka.time > Kafka.window:
+            Kafka.time = time.time()
+            Kafka.flush()
+    @staticmethod
+    def flush():
+        """
+        Throw talked messages
+        :return:
+        """
+        if not Kafka.is_running:
+            Kafka.end()
+            raise ValueError('Kafka is not running yet')
+        for topic in Kafka.topics:
+            p = Popen([Kafka.home + '/bin/windows/kafka-console-producer.bat',
+                       '--broker-list', 'localhost:9092',
+                       '--topic', topic], stdin=PIPE, shell=True, universal_newlines=True)
+            # '--property', '"parse.key=true"', '--property', '"key.separator=:"',
+            p.communicate(input='\n'.join(Kafka.topics[topic]))
+        Kafka.topics = dict()
+
+
+    @staticmethod
+    def end():
+        if Kafka.is_running:
+            Kafka.flush()
+        if Kafka.is_running_scc:
+            Kafka.scc.stop(stopSparkContext=False, stopGraceFully=True)
+            Kafka.scc.awaitTermination()
+            Kafka.is_running_scc = False
+        Popen([Kafka.home + '/bin/windows/kafka-server-stop.bat',
+               Kafka.home + '/config/server.properties']).wait()
+        Popen([Kafka.home + '/bin/windows/zookeeper-server-stop.bat',
+               Kafka.home + '/config/zookeeper.properties']).wait()
+        if Kafka.zoo:
+            Kafka.zoo.kill()
+        if Kafka.kafka:
+            Kafka.kafka.kill()
+        for topic_producer in Kafka.topics.values():
+            topic_producer.kill()
+        Kafka.is_running = False
+
+
+
+            # #####
 # TYPES
 # #####
 
@@ -35,6 +187,7 @@ inf = float('inf')
 # #####
 # TOOLS
 # #####
+
 def derivate(f, a, d=10**-8, left=False):
     """
     estimate derivate
@@ -111,6 +264,14 @@ def try_apply(x, callable_or_collables):
                 pass
         return x
 
+def nb_params(f):
+    """
+
+    :param f: callable
+    :return: number of parameters taken by f
+    """
+    return len(dict(inspect.signature(f).parameters))
+
 
 # #####
 # PLOTS TOOLS
@@ -124,17 +285,24 @@ def ygrid(a, b, p):
 
 
 # #####
-# INFOS
+# SYSTEM
 # #####
 
-def nb_params(f):
+def save_environ(path='c:/Prog'):
     """
-
-    :param f: callable
-    :return: number of parameters taken by f
+    Export environment variables in JSON
+    :param path: path where the json file wil be created
+    :return: full path to created file
     """
-    return len(dict(inspect.signature(f).parameters))
-
+    suffixe = time.strftime('%Hh%Mm%Ss_%d_%B_20%y')
+    path = os.path.join(path, 'path_' + suffixe + '.json')
+    file = open(path, 'w')
+    file.write('{\n\t' + str(os.environ)[9:-2].replace('\'', '"') \
+               .replace('",', '",\n\t').replace('\\\\', '/') \
+               .replace('\t ', '\t') + '\n}')
+    file.close()
+    print('SUCCESS : Path exported in JSON')
+    return path
 
 # ######
 # CHECKS
@@ -886,7 +1054,7 @@ def get_sample(id, cast=None):
            'surfaces': 'ek_InTP_CO2_Me_4_graphene_W_r2_k.dat',
            'adults': 'adult.txt'}
     if id == 'xyz':
-        res = [line[1:] for line in load_csv(__get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')[2:-1]]
+        res = [line[1:] for line in load_csv(__get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')[:-1]]
     elif id == 'charges':
         res = [line[1:] for line in load_csv(__get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')[2:-1]]
     elif id == 'surfaces':
@@ -957,29 +1125,29 @@ def run_example(tag=None):
         tab = get_sample('xyz', pd.DataFrame)
         tab.columns = ['atom', 'x', 'y', 'z']
         charges = get_sample('charges')
-        Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10),
+        Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10),
                                 marker='.', colored_by=lambda i, xy: xy[1][i], label='du noir au blanc') \
-            .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 100,
+            .add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10) - 100,
                  marker='.', colored_by='#ff00ff', label='rose') \
-            .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 200,
+            .add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10) - 200,
                  marker='.', colored_by=lambda i, xy: xy[1][i], label='du jaune au rouge') \
-            .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 300,
+            .add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10) - 300,
                  marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[1][i]) % 3],
                  label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
-            .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 400,
+            .add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10) - 400,
                  marker='.', markersize=3,
                  colored_by=lambda i, xy: '>-400' if xy[1][i] > -400 else '<=-400')
         Plot(3, title=':)').add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2),
-                                z=lambda i, x, y: (x * y) ** 2 + 8000,
+                                z=lambda i, x, y: (x[i] * y[i]) ** 2 + 8000,
                                 marker='.', colored_by=lambda i, xy: xy[2][i], label='du noir au blanc') \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 + 5000,
+            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 2 + 5000,
                  marker='.', colored_by='#ff00ff', label='rose') \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 + 2000,
+            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 2 + 2000,
                  marker='.', colored_by=lambda i, xy: xy[2][i], label='du jaune au rouge') \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 - 1000,
+            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 2 - 1000,
                  marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[2][i]) % 3],
                  label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 - 4000,
+            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 2 - 4000,
                  marker='.', markersize=3,
                  colored_by=lambda i, xy: 'exterieur' if math.sqrt(xy[0][i] ** 2 + xy[1][i] ** 2) > 1 else 'interieur')
 
@@ -1062,7 +1230,7 @@ def array_to_img(array, name=None):
         fig.savefig(name, bbox_inches='tight', pad_inches=0)
     return fig, ax
 
+
+
 if __name__ == '__main__':
-    array_to_img([[[random.uniform(0,1),0,1] for _ in range(10)]
-                 for _ in range(10)])
-    show()
+    Kafka.end()
