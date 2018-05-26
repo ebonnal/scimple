@@ -2,9 +2,9 @@ from setuptools import setup
 
 setup(
     name='scimple',
-    version='1.10.0',
+    version='1.10.1',
     py_modules=['scimple'],
-    install_requires=['matplotlib', 'numpy', 'pandas'],
+    install_requires=['matplotlib', 'numpy', 'pandas', 'pyspark'],
     packages=['scimple_data'],
     package_data={'scimple_data': ['*']},
     url='http://github.com/EnzoBnl/Scimple',

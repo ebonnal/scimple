@@ -2,22 +2,48 @@
 SCIMPLE, Parse and Plot scimply in 2 lines
 Maintainer: enzobonnal@gmail.com
 """
-import time
 import inspect
 import math
 import os
 import random
 import re
+import time
 from collections import Collection, Iterable
+from shutil import copyfile, copytree
 from subprocess import Popen, PIPE, TimeoutExpired
+import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib import cm
 from matplotlib import gridspec
 from mpl_toolkits.mplot3d import Axes3D
-import logging
+import importlib
 _ = Axes3D
+
+# #####
+# VALUES
+# #####
+
+FuncType = type(lambda x: None)
+NoneType = type(None)
+inf = float('inf')
+
+default = '33D2FADAA127E688CAC8E65296799750655CDA920FCE4A6E84EFEAB2262128E3'  # 'None' 10 times sha-256ed
+
+
+def is_default(value):
+    return value == default
+
+
+
+# #####
+# INTERN UTILS
+# #####
+
+def _get_scimple_data_path(path):
+    return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path).replace('\\', '/')
+
 
 # #####
 # ERROR
@@ -26,27 +52,53 @@ _ = Axes3D
 class ScimpleError(Exception):
     """module specific Errors"""
 
+
 # #####
 # PYSPARK
 # #####
 _sc = None
 _spark = None
 
+try:
+    import pyspark
+    os.environ['SPARK_HOME'] = pyspark.__file__[:pyspark.__file__.index('__init__.py') - 1]
+    importlib.reload(pyspark)
+except:
+    pass
+
+
 def sc_spark():
-    global _sc, _spark
-    if _sc:  # spark already running
-        return _sc, _spark
+    """
+
+    :return: (SparkContext, SQLContext)
+    """
     try:
         import pyspark
-        _sc = pyspark.SparkContext()
-        _spark = pyspark.SQLContext(_sc)
+        sc = pyspark.SparkContext.getOrCreate()
+        return sc, pyspark.SQLContext.getOrCreate(sc)
     except:
-        raise ValueError('pyspark not available')
-    return _sc, _spark
+        raise Warning('pyspark not available')
+
+
 
 # #####
 # KAFKA
 # #####
+
+
+def _export_pyspark_kafka_jar():
+    global _sc, _spark
+    if 'SPARK_HOME' in os.environ:
+        if not os.path.isfile(
+                os.path.join(os.environ['SPARK_HOME'],'jars/spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar')):
+            copyfile(_get_scimple_data_path('spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar'),
+                     os.path.join(os.environ['SPARK_HOME'], 'jars/spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar'))
+
+_export_pyspark_kafka_jar()
+
+if 'KAFKA_HOME' not in os.environ:
+    os.environ['KAFKA_HOME'] = _get_scimple_data_path('kafka')
+
 
 class Kafka:
     """
@@ -54,35 +106,43 @@ class Kafka:
     KAFKA_HOME can be set (overwritten by explicit
     """
     is_running = False
-    home = os.environ['KAFKA_HOME'] if 'KAFKA_HOME' in os.environ else None
-    topics =dict()
+    home = os.environ['KAFKA_HOME']
+    topics = dict()
     zoo = None
     kafka = None
     time = None
     window = 5
+    window_scc = 4
     scc = None
     dstream = None
     is_running_scc = False
+
     @staticmethod
-    def create_dstream(topic, window=10):
+    def set_listening_window(window):
+        """
+        :param window: listening window in seconds
+        :return:
+        """
+        Kafka.window_scc = window
+
+    @staticmethod
+    def create_dstream(topic):
         """
         create e sparkstreamingcontext linked to a subject and a dstream
         :param topic:  str
         :param window: int seconds for scc buffer window
         :return: dstream
         """
-        if not Kafka.scc or not Kafka.dstream or not Kafka.is_running_scc:
-            sc, _ = sc_spark()
+        sc, _ = sc_spark()  # also used to check pyspark avaibilty
+        if not Kafka.scc:
             from pyspark.streaming import StreamingContext
-            from pyspark.streaming.kafka import KafkaUtils
-            Kafka.scc = StreamingContext(sc, window)
-            Kafka.dstream = KafkaUtils.createStream(Kafka.scc , 'localhost:2181', 'sparkit', {topic: 1})
-            return Kafka.dstream
-        else:
-            return Kafka.dstream
+            Kafka.scc = StreamingContext(sc, Kafka.window_scc)
+        from pyspark.streaming.kafka import KafkaUtils
+        Kafka.dstream = KafkaUtils.createStream(Kafka.scc, 'localhost:2181', 'sparkit', {topic: 1})
+        return Kafka.dstream
 
     @staticmethod
-    def start(home=None, window=5):
+    def start_server(home=None, window=5):
         """
         :param window : window in seconds
         :param home: path to kafka home directory
@@ -96,25 +156,35 @@ class Kafka:
                 Kafka.home = home
             if not Kafka.home:
                 raise ValueError('please set KAFKA_HOME or provide it as start method argument')
-            Kafka.zoo = Popen([Kafka.home+'/bin/windows/zookeeper-server-start.bat',
-                             Kafka.home+'/config/zookeeper.properties'],
+            print([Kafka.home + '/bin/windows/zookeeper-server-start.bat',
+                               Kafka.home + '/config/zookeeper.properties'])
+            Kafka.zoo = Popen([Kafka.home + '/bin/windows/zookeeper-server-start.bat',
+                               Kafka.home + '/config/zookeeper.properties'],
                               universal_newlines=True)
             time.sleep(3)
             kafka_well_started = False
             while not kafka_well_started:
                 try:
                     Kafka.kafka = Popen([Kafka.home + '/bin/windows/kafka-server-start.bat',
-                                 Kafka.home + '/config/server.properties'],
-                                    universal_newlines=True)
-                    Kafka.kafka.wait(10)
+                                         Kafka.home + '/config/server.properties'],
+                                        universal_newlines=True)
+                    Kafka.kafka.wait(15)
                     Popen([Kafka.home + '/bin/windows/kafka-server-stop.bat',
                            Kafka.home + '/config/server.properties']).wait()
                 except TimeoutExpired:
                     kafka_well_started = True
-                #if Kafka.kafka.poll() is None:  # process en cours bien lancé
+                # if Kafka.kafka.poll() is None:  # process en cours bien lancé
 
             Kafka.is_running = True
             Kafka.time = time.time()
+
+    @staticmethod
+    def start_listening():
+        if Kafka.scc:
+            Kafka.scc.start()
+            Kafka.is_running_scc = True
+        else:
+            raise RuntimeError('no dstreams registered')
 
     @staticmethod
     def talk(topic, message):
@@ -123,9 +193,6 @@ class Kafka:
         :param topic: str : existing topic
         :return: None
         """
-        if Kafka.scc and not Kafka.is_running_scc:
-            Kafka.scc.start()
-            Kafka.is_running_scc = True
         if not Kafka.is_running:
             raise ValueError('Kafka is not running yet')
         if topic not in Kafka.topics:
@@ -135,6 +202,7 @@ class Kafka:
         if time.time() - Kafka.time > Kafka.window:
             Kafka.time = time.time()
             Kafka.flush()
+
     @staticmethod
     def flush():
         """
@@ -142,7 +210,6 @@ class Kafka:
         :return:
         """
         if not Kafka.is_running:
-            Kafka.end()
             raise ValueError('Kafka is not running yet')
         for topic in Kafka.topics:
             p = Popen([Kafka.home + '/bin/windows/kafka-console-producer.bat',
@@ -152,15 +219,10 @@ class Kafka:
             p.communicate(input='\n'.join(Kafka.topics[topic]))
         Kafka.topics = dict()
 
-
     @staticmethod
-    def end():
+    def stop_server():
         if Kafka.is_running:
             Kafka.flush()
-        if Kafka.is_running_scc:
-            Kafka.scc.stop(stopSparkContext=False, stopGraceFully=True)
-            Kafka.scc.awaitTermination()
-            Kafka.is_running_scc = False
         Popen([Kafka.home + '/bin/windows/kafka-server-stop.bat',
                Kafka.home + '/config/server.properties']).wait()
         Popen([Kafka.home + '/bin/windows/zookeeper-server-stop.bat',
@@ -173,22 +235,27 @@ class Kafka:
             topic_producer.kill()
         Kafka.is_running = False
 
+    @staticmethod
+    def stop_listening():
+        """
+        After that you need to reregister dstreams !! Bug if restarting without dstreams
+        :return:
+        """
+        if not Kafka.is_running_scc:
+            raise RuntimeError('not listening')
+        Kafka.scc.stop(stopSparkContext=False)
+        Kafka.scc.awaitTermination()
+        Kafka.is_running_scc = False
+        from pyspark.streaming import StreamingContext
+        Kafka.scc = StreamingContext(sc_spark()[0], Kafka.window_scc)
 
-
-            # #####
-# TYPES
-# #####
-
-FuncType = type(lambda x: None)
-NoneType = type(None)
-inf = float('inf')
 
 
 # #####
 # TOOLS
 # #####
 
-def derivate(f, a, d=10**-8, left=False):
+def derivate(f, a, d=10 ** -8, left=False):
     """
     estimate derivate
     :param f: function float -> float
@@ -197,7 +264,8 @@ def derivate(f, a, d=10**-8, left=False):
     :param left: if True, will derivate f from left (from right by default)
     :return:
     """
-    return (f(a+d)-f(a))/d
+    return (f(a + d) - f(a)) / d
+
 
 def integrate(f, a, b, precision=1000000, mini=None, maxi=None, precision_max_search=None):
     """
@@ -226,10 +294,11 @@ def integrate(f, a, b, precision=1000000, mini=None, maxi=None, precision_max_se
         while tirage == fx:
             tirage = random.uniform(mini, maxi)
         if fx > 0:
-            res += 1 if  tirage < fx else 0
+            res += 1 if tirage < fx else 0
         else:
-            res += 0 if  tirage < fx else -1
-    return res/precision*(b-a)*(maxi-mini)
+            res += 0 if tirage < fx else -1
+    return res / precision * (b - a) * (maxi - mini)
+
 
 def flatten_n_times(n, l):
     n = int(n)
@@ -242,27 +311,31 @@ def flatten_n_times(n, l):
     return l
 
 
-def try_apply(x, callable_or_collables):
+def try_apply(x, callable_or_collables, default_value=default):
     """
 
     :param x: any
     :param callable_or_collables: callable or Collection of callables
+    :param default: return value if application fail, default None means that x will be returned
     :return:
         callable_or_collables(x) or x if callable_or_collables failed on x
         callable_or_collables[i](x) or x if all callables of callable_or_collables collection failed on x
     """
+    if is_default(default_value):
+        default_value = x
     if callable(callable_or_collables):
         try:
             return callable_or_collables(x)
         except:
-            return x
+            return default_value
     elif issubclass(type(callable_or_collables), Iterable):
         for fi in callable_or_collables:
             try:
                 return fi(x)
             except:
                 pass
-        return x
+        return default_value
+
 
 def nb_params(f):
     """
@@ -303,6 +376,7 @@ def save_environ(path='c:/Prog'):
     file.close()
     print('SUCCESS : Path exported in JSON')
     return path
+
 
 # ######
 # CHECKS
@@ -900,7 +974,7 @@ class Plot:
                     to_plot = (x_group, y_group)
                 elif self.__dim == 3:
                     to_plot = (x_group, y_group, z_group)
-                kwargs_plot['label']= group if label is None or str(group) not in label else label[str(group)]
+                kwargs_plot['label'] = group if label is None or str(group) not in label else label[str(group)]
                 self.__ax.plot(*(*to_plot, marker),
                                **{**kwargs_plot,
                                   'color': pastelize(colors_list.pop())}) if len(marker) == 1 \
@@ -1044,9 +1118,6 @@ def load_csv(path, delimiter=r'\n', sep=','):
 # ####
 # DATA
 # ####
-def __get_scimple_data_path(path):
-    return os.path.join(os.path.abspath(os.path.dirname(__file__)), 'scimple_data', path)
-
 
 def get_sample(id, cast=None):
     dic = {'xyz': "phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz",
@@ -1054,75 +1125,87 @@ def get_sample(id, cast=None):
            'surfaces': 'ek_InTP_CO2_Me_4_graphene_W_r2_k.dat',
            'adults': 'adult.txt'}
     if id == 'xyz':
-        res = [line[1:] for line in load_csv(__get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')[:-1]]
+        res = [line[1:] for line in load_csv(_get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')[2:-1]]
     elif id == 'charges':
-        res = [line[1:] for line in load_csv(__get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')[2:-1]]
+        res = [line[1:] for line in load_csv(_get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')[2:-1]]
     elif id == 'surfaces':
-        res = load_csv(__get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')
+        res = load_csv(_get_scimple_data_path(dic[id]), r'[\t| ]*[[\r\n]|\n]', r'[\t| ]+')
     elif id == 'adults':
-        res = load_csv(__get_scimple_data_path(dic[id]))
+        res = load_csv(_get_scimple_data_path(dic[id]))
     return cast(res) if cast else res
 
 
 def run_example(tag=None):
     if tag is None:
-        source = r'''
-        tab = get_sample('xyz', pd.DataFrame)
-        tab.columns = ['atom', 'x', 'y', 'z']
-        charges = get_sample('charges')
-        Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10),
-                                marker='.', colored_by=lambda i, xy: xy[1][i], label='du noir au blanc') \
-            .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 100,
-                 marker='.', colored_by='#ff00ff', label='rose') \
-            .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 200,
-                 marker='.', colored_by=lambda i, xy: xy[1][i], label='du jaune au rouge') \
-            .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 300,
-                 marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[1][i]) % 3],
-                 label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
-            .add(x=range(100), y=lambda i, x: 50 * math.sin(x / 10) - 400,
-                 marker='.', markersize=3,
-                 colored_by=lambda i, xy: '>-400' if xy[1][i] > -400 else '<=-400')
-        Plot(3, title=':)').add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2),
-                                z=lambda i, x, y: (x * y) ** 2 + 8000,
-                                marker='.', colored_by=lambda i, xy: xy[2][i], label='du noir au blanc') \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 + 5000,
-                 marker='.', colored_by='#ff00ff', label='rose') \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 + 2000,
-                 marker='.', colored_by=lambda i, xy: xy[2][i], label='du jaune au rouge') \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 - 1000,
-                 marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[2][i]) % 3],
-                 label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x * y) ** 2 - 4000,
-                 marker='.', markersize=3,
-                 colored_by=lambda i, xy: 'exterieur' if math.sqrt(xy[0][i] ** 2 + xy[1][i] ** 2) > 1 else 'interieur')
+        source = r"""
+        from scimple1.scimple.scimple import Plot, get_sample, xgrid, ygrid
+import pandas as pd
+import math
+import random
+tab = get_sample('xyz', pd.DataFrame)
+
+tab.columns = ['atom', 'x', 'y', 'z']
+charges = get_sample('charges')
+Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10),
+                        marker='.', colored_by=lambda i, xy: xy[1][i], label='du noir au blanc') \
+    .add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10) - 100,
+         marker='.', colored_by='#ff00ff', label='rose') \
+    .add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10) - 200,
+         marker='.', colored_by=lambda i, xy: xy[1][i], label='du jaune au rouge') \
+    .add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10) - 300,
+         marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[1][i]) % 3],
+         label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
+    .add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10) - 400,
+         marker='.', markersize=3,
+         colored_by=lambda i, xy: '>-400' if xy[1][i] > -400 else '<=-400')
+
+Plot(3, zlabel='z', bg_color='#aaaabb', title="molecule over graphene").magic('invert_color_bars') \
+    .add(tab, 'x', 'y', 'z', first_line=101, markersize=4, marker='.',
+         colored_by=lambda i, _: sum(charges[101 + i]), label='delta charge') \
+    .add(tab, 'x', 'y', 'z', last_line=100
+         , markersize=4, marker='o', colored_by='atom')
     
-        Plot(3, zlabel='z', bg_color='#ddddff', title="molecule over graphene") \
-            .add(tab, 'x', 'y', 'z', first_line=101, markersize=4, marker='.',
-                 colored_by=lambda i, _: sum(charges[101+i])) \
-            .add(tab, 'x', 'y', 'z', last_line=100
-                 , markersize=4, marker='o', colored_by='atom')
-        Plot(2, bg_color='#cccccc', title="2D z axis projection") \
-            .add(tab, 'x', 'y', last_line=100, colored_by='atom', marker='o') \
-            .add(tab, 'x', 'y', first_line=101, markersize=4, marker='x',
-                 colored_by=lambda i, _: sum(charges[101+i][1:]))
-        Plot(2, bg_color='#cccccc', xlabel="x axis", ylabel="y axis", title="comparison") \
-            .add(tab, 'x', 'y', first_line=101, markersize=6, marker='o',
-                 colored_by=lambda i, _: tab['z'][101+i],
-                 label="z axis") \
-            .add(tab, 'x', 'y', first_line=101, markersize=4, marker='x',
-                 colored_by=lambda i, _: sum(charges[101+i][1:]),
-                 label="external electrons")
-        Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis", title="z dispersion") \
-            .add(tab, 'atom', 'z', markersize=6, marker='o', colored_by='atom',
-                 label="z axis")
-        Plot(2, bg_color="#44bb44").add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
-                                        colored_by=lambda i, xy: xy[1][i]) \
-            .add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
-                 colored_by=lambda i, xy: xy[1][i], markersize=0.5) \
-            .add(x=range(-1, 6), y=[5] * 7, colored_by='#bb5555')
-        show(True)'''
+dict_atoms_colors={'H': '#ffffff', 'C':'#000000', 'N':'#0000aa', 'O':'#cc0000', 'Fe':'#aa00aa'}
+dict_colors_atoms={c: a for a, c in dict_atoms_colors.items()}
+print(dict_colors_atoms)
+Plot(2, bg_color='#225522', title="2D z axis projection") \
+    .add(tab, 'x', 'y', first_line=101, markersize=10, marker='.',
+         colored_by=lambda i, _: sum(charges[101 + i][1:]), label='delta charge')\
+    .add(tab, 'x', 'y', last_line=100, colored_by=lambda i, xy: dict_atoms_colors[tab['atom'][i]], marker='.',
+        label=dict_colors_atoms)
+    
+Plot(2, bg_color='#cccccc', xlabel="x axis", ylabel="y axis", title="comparison") \
+    .add(tab, 'x', 'y', first_line=101, markersize=6, marker='o',
+         colored_by=lambda i, _: tab['z'][101 + i],
+         label="z axis") \
+    .add(tab, 'x', 'y', first_line=101, markersize=4, marker='x',
+         colored_by=lambda i, _: sum(charges[101 + i][1:]),
+         label="external electrons")
+Plot(2, xlabel="atom", ylabel="z axis", title="z dispersion") \
+    .add(tab, 'atom', 'z', markersize=6, marker='o', colored_by='atom')
+Plot(2, bg_color="#88aa88").add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
+                                colored_by=lambda i, xy: xy[1][i]) \
+    .add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
+         colored_by=lambda i, xy: xy[1][i], markersize=0.5) \
+    .add(x=range(-1, 6), y=[5] * 7, colored_by='#bb5555')
+    
+Plot(3, title='simple color').add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 3 + 5000,
+         marker='.', colored_by='#aa00aa', label='rose', markersize=2) 
+Plot(3, title='color bars')\
+    .add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 3 + 2000,
+         marker='.', colored_by=lambda i, xy: xy[2][i], label='du jaune au rouge') \
+    .add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2),
+                        z=lambda i, x, y: (x[i] * y[i]) ** 3 + 8000,
+                        marker='o', colored_by=lambda i, xy: xy[2][i], label='du noir au blanc', markersize=2) 
+Plot(3, title='custom color').add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 3 - 1000,
+         marker='.', colored_by=lambda i, xy: ['#aa0000', '#00aa00', '#0000aa'][int(xy[2][i]) % 3],
+         label={'#aa0000': 'rouge', '#00aa00': 'vert', '#0000aa': 'bleu'}, markersize=2) 
+Plot(3, title='custom color').add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 3 - 4000,
+         marker='.', markersize=3,
+         colored_by=lambda i, xy: 'exterieur' if math.sqrt(xy[0][i] ** 2 + xy[1][i] ** 2) > 1 else 'interieur')"""
         print(source)
         tab = get_sample('xyz', pd.DataFrame)
+
         tab.columns = ['atom', 'x', 'y', 'z']
         charges = get_sample('charges')
         Plot(2, title=':)').add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10),
@@ -1137,29 +1220,22 @@ def run_example(tag=None):
             .add(x=range(100), y=lambda i, x: 50 * math.sin(x[i] / 10) - 400,
                  marker='.', markersize=3,
                  colored_by=lambda i, xy: '>-400' if xy[1][i] > -400 else '<=-400')
-        Plot(3, title=':)').add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2),
-                                z=lambda i, x, y: (x[i] * y[i]) ** 2 + 8000,
-                                marker='.', colored_by=lambda i, xy: xy[2][i], label='du noir au blanc') \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 2 + 5000,
-                 marker='.', colored_by='#ff00ff', label='rose') \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 2 + 2000,
-                 marker='.', colored_by=lambda i, xy: xy[2][i], label='du jaune au rouge') \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 2 - 1000,
-                 marker='x', colored_by=lambda i, xy: ['#ff0000', '#00ff00', '#0000ff'][int(xy[2][i]) % 3],
-                 label={'#ff0000': 'rouge', '#00ff00': 'vert', '#0000ff': 'bleu'}) \
-            .add(x=xgrid(-2, 2, 0.2), y=ygrid(-2, 2, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 2 - 4000,
-                 marker='.', markersize=3,
-                 colored_by=lambda i, xy: 'exterieur' if math.sqrt(xy[0][i] ** 2 + xy[1][i] ** 2) > 1 else 'interieur')
 
-        Plot(3, zlabel='z', bg_color='#ddddff', title="molecule over graphene").magic('invert_color_bars') \
+        Plot(3, zlabel='z', bg_color='#aaaabb', title="molecule over graphene").magic('invert_color_bars') \
             .add(tab, 'x', 'y', 'z', first_line=101, markersize=4, marker='.',
-                 colored_by=lambda i, _: sum(charges[101 + i])) \
+                 colored_by=lambda i, _: sum(charges[101 + i]), label='delta charge') \
             .add(tab, 'x', 'y', 'z', last_line=100
                  , markersize=4, marker='o', colored_by='atom')
-        Plot(2, bg_color='#cccccc', title="2D z axis projection") \
-            .add(tab, 'x', 'y', last_line=100, colored_by='atom', marker='o') \
-            .add(tab, 'x', 'y', first_line=101, markersize=4, marker='x',
-                 colored_by=lambda i, _: sum(charges[101 + i][1:]))
+
+        dict_atoms_colors = {'H': '#ffffff', 'C': '#000000', 'N': '#0000aa', 'O': '#cc0000', 'Fe': '#aa00aa'}
+        dict_colors_atoms = {c: a for a, c in dict_atoms_colors.items()}
+        print(dict_colors_atoms)
+        Plot(2, bg_color='#225522', title="2D z axis projection") \
+            .add(tab, 'x', 'y', first_line=101, markersize=10, marker='.',
+                 colored_by=lambda i, _: sum(charges[101 + i][1:]), label='delta charge') \
+            .add(tab, 'x', 'y', last_line=100, colored_by=lambda i, xy: dict_atoms_colors[tab['atom'][i]], marker='.',
+                 label=dict_colors_atoms)
+
         Plot(2, bg_color='#cccccc', xlabel="x axis", ylabel="y axis", title="comparison") \
             .add(tab, 'x', 'y', first_line=101, markersize=6, marker='o',
                  colored_by=lambda i, _: tab['z'][101 + i],
@@ -1167,16 +1243,36 @@ def run_example(tag=None):
             .add(tab, 'x', 'y', first_line=101, markersize=4, marker='x',
                  colored_by=lambda i, _: sum(charges[101 + i][1:]),
                  label="external electrons")
-        Plot(2, bg_color='#cccccc', xlabel="atom", ylabel="z axis", title="z dispersion") \
-            .add(tab, 'atom', 'z', markersize=6, marker='o', colored_by='atom',
-                 label="z axis")
-        Plot(2, bg_color="#44bb44").add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
+        Plot(2, xlabel="atom", ylabel="z axis", title="z dispersion") \
+            .add(tab, 'atom', 'z', markersize=6, marker='o', colored_by='atom')
+        Plot(2, bg_color="#88aa88").add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
                                         colored_by=lambda i, xy: xy[1][i]) \
             .add(x=range(5), y=[15] + [random.randint(1, 10) for _ in range(4)], marker='bar',
                  colored_by=lambda i, xy: xy[1][i], markersize=0.5) \
             .add(x=range(-1, 6), y=[5] * 7, colored_by='#bb5555')
+
+        Plot(3, title='simple color').add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2),
+                                          z=lambda i, x, y: (x[i] * y[i]) ** 3 + 5000,
+                                          marker='.', colored_by='#aa00aa', label='rose', markersize=2)
+        Plot(3, title='color bars') \
+            .add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2), z=lambda i, x, y: (x[i] * y[i]) ** 3 + 2000,
+                 marker='.', colored_by=lambda i, xy: xy[2][i], label='du jaune au rouge') \
+            .add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2),
+                 z=lambda i, x, y: (x[i] * y[i]) ** 3 + 8000,
+                 marker='o', colored_by=lambda i, xy: xy[2][i], label='du noir au blanc', markersize=2)
+        Plot(3, title='custom color').add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2),
+                                          z=lambda i, x, y: (x[i] * y[i]) ** 3 - 1000,
+                                          marker='.',
+                                          colored_by=lambda i, xy: ['#aa0000', '#00aa00', '#0000aa'][int(xy[2][i]) % 3],
+                                          label={'#aa0000': 'rouge', '#00aa00': 'vert', '#0000aa': 'bleu'},
+                                          markersize=2)
+        Plot(3, title='custom color').add(x=xgrid(-4, 4, 0.2), y=ygrid(-4, 4, 0.2),
+                                          z=lambda i, x, y: (x[i] * y[i]) ** 3 - 4000,
+                                          marker='.', markersize=3,
+                                          colored_by=lambda i, xy: 'exterieur' if math.sqrt(
+                                              xy[0][i] ** 2 + xy[1][i] ** 2) > 1 else 'interieur')
     elif tag == 'color_modes':
-        source=r"""
+        source = r"""
         tab=[[i,i//2] for i in range(20)]
         Plot(title="rien").add(tab, 0, 1)
         Plot(title="colored_by=0").add(tab, 0, 1, colored_by=0,
@@ -1208,11 +1304,12 @@ def run_example(tag=None):
             .add(tab, 0, 1, colored_by=lambda i, xy: '>5' if xy[1][i] > 5 else '<5')
     show(True)
 
+
 def array_to_img(array, name=None):
     """
 
     :param array: 2D array of RVB triplets of 0-255 ints
-    :param name: name (including extension)
+    :param name: name (including extension) if None : no saving
     :return: plt fig of image
     """
     fig, ax = plt.subplots()
@@ -1221,16 +1318,26 @@ def array_to_img(array, name=None):
             if len(array[0]) > 0 and type(array[0][0]) in {tuple, list}:
                 if len(array[0][0]) in {1, 3} and all([type(elem) is int and 0 <= elem < 256 for elem in array[0][0]]):
                     if len(array[0][0]) == 1:
-                        array[0][0] = [array[0][0][0]]*3
-                elif len(array[0][0]) in {1, 3} and all([type(elem) is float and 0 <= elem <= 1 for elem in array[0][0]]):
+                        array[0][0] = [array[0][0][0]] * 3
+                elif len(array[0][0]) in {1, 3} and all(
+                        [type(elem) is float and 0 <= elem <= 1 for elem in array[0][0]]):
                     if len(array[0][0]) == 1:
-                        array[0][0] = [array[0][0][0]]*3
+                        array[0][0] = [array[0][0][0]] * 3
     ax.imshow(array)
     if name:
         fig.savefig(name, bbox_inches='tight', pad_inches=0)
     return fig, ax
 
 
-
 if __name__ == '__main__':
-    Kafka.end()
+
+    from pyspark.streaming import StreamingContext
+    from pyspark import SparkContext
+    Kafka.create_dstream('e').foreachRDD(lambda rdd:rdd)
+    Kafka.start_listening()
+    print(1111111111111)
+    Kafka.stop_listening()
+    Kafka.create_dstream('e').foreachRDD(lambda rdd:rdd)
+
+    print(222222222)
+    Kafka.start_listening()
