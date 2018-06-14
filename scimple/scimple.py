@@ -513,6 +513,17 @@ def pastelize(color, coef_pastel=2, coef_fonce=0.75):
     return '#' + ''.join(map(lambda x: hex(int(x))[2:], colors))
 
 
+# ######
+# SERVER
+# ######
+
+
+
+# ####
+# PLOT
+# ####
+
+
 class Plot:
     """
     Plot object, associated with a unique figure
@@ -660,15 +671,16 @@ class Plot:
             if nb_params(colored_by) != 2:
                 return None
             res = colored_by(test_index, xyz_tuple)
+            if is_color_code(res):
+                return Plot.__cm_function_color_code
+            if type(res) is str:
+                return Plot.__cm_function_str
             try:
                 float(res)
                 return Plot.__cm_function_float
             except:
                 pass
-            if is_color_code(res):
-                return Plot.__cm_function_color_code
-            if type(res) is str:
-                return Plot.__cm_function_str
+
         return None
 
     def add(self, table=None, x=None, y=None, z=None, first_line=0, last_line=None,

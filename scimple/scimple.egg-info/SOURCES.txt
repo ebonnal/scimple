@@ -10,3 +10,4 @@ scimple_data/CHARGES_phenyl-Fe-porphyirine-CO2-Me_4_rel
 scimple_data/adult.txt
 scimple_data/ek_InTP_CO2_Me_4_graphene_W_r2_k.dat
 scimple_data/phenyl-Fe-porphyirine-CO2-Me_4_rel.xyz
+scimple_data/spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar
