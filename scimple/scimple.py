@@ -74,13 +74,14 @@ def sc_spark():
     """
     try:
         import pyspark
+        from pyspark.sql import SparkSession
         sc = pyspark.SparkContext.getOrCreate()
-        return sc, pyspark.SQLContext.getOrCreate(sc)
+        spark = pyspark.SQLContext.getOrCreate(sc)
+        spark.setConf("spark.sql.execution.arrow.enabled", "true")
+        return sc, spark
     except:
         raise Warning('pyspark not available')
-
-
-
+    
 # #####
 # KAFKA
 # #####
@@ -1342,14 +1343,14 @@ def array_to_img(array, name=None):
 
 
 if __name__ == '__main__':
-
-    from pyspark.streaming import StreamingContext
-    from pyspark import SparkContext
-    Kafka.create_dstream('e').foreachRDD(lambda rdd:rdd)
-    Kafka.start_listening()
-    print(1111111111111)
-    Kafka.stop_listening()
-    Kafka.create_dstream('e').foreachRDD(lambda rdd:rdd)
-
-    print(222222222)
-    Kafka.start_listening()
+    pass
+    # from pyspark.streaming import StreamingContext
+    # from pyspark import SparkContext
+    # Kafka.create_dstream('e').foreachRDD(lambda rdd:rdd)
+    # Kafka.start_listening()
+    # print(1111111111111)
+    # Kafka.stop_listening()
+    # Kafka.create_dstream('e').foreachRDD(lambda rdd:rdd)
+    #
+    # print(222222222)
+    # Kafka.start_listening()
