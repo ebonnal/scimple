@@ -1,10 +1,6 @@
-/*
-/*/
-!.gitignore
-!/scimple/
-!/scimple/dist/
-!/scimple/scimple.py
-!/scimple/__init__.py
-!/scimple/README.rst
-!/scimple/scimple_data!/scimple/setup.py
-!/scimple/notebook_example.ipynb
+**.*/
+**build/
+**scimple.egg-info/
+**spark-warehouse/
+**__pycache__/
+**Untitled.ipynb

@@ -1,2 +1,0 @@
-scimple
-scimple_data
