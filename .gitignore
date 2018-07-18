@@ -1,7 +1,10 @@
-*
+/*
+/*/
 !.gitignore
-!scimple/scimple.py
-!scimple/scimple_data
-!scimple/dist
-!scimple/setup.py
-!notebook/sample.ipynb
+!/scimple/
+!/scimple/dist/
+!/scimple/scimple.py
+!/scimple/__init__.py
+!/scimple/README.rst
+!/scimple/scimple_data!/scimple/setup.py
+!/scimple/notebook_example.ipynb
