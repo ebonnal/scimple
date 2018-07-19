@@ -81,7 +81,7 @@ def sc_spark():
         return sc, spark
     except:
         raise Warning('pyspark not available')
-    
+
 # #####
 # KAFKA
 # #####
@@ -169,7 +169,7 @@ class Kafka:
                     Kafka.kafka = Popen([Kafka.home + '/bin/windows/kafka-server-start.bat',
                                          Kafka.home + '/config/server.properties'],
                                         universal_newlines=True)
-                    Kafka.kafka.wait(15)
+                    Kafka.kafka.wait(20)
                     Popen([Kafka.home + '/bin/windows/kafka-server-stop.bat',
                            Kafka.home + '/config/server.properties']).wait()
                 except TimeoutExpired:
