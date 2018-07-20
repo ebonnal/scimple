@@ -1,32 +1,23 @@
-import inspect
-import math
-import os
-import time
-import random
-import re
-from collections import Collection, Iterable
-from shutil import copyfile, copytree
+from shutil import copyfile
 from subprocess import Popen, PIPE, TimeoutExpired
-import logging
+from .pyspark import pyspark_contexts
+from .utils import *
 
-from plot import _get_scimple_data_path, sc_sqlc
+
+
 # #####
 # KAFKA
 # #####
 
 
-def _export_pyspark_kafka_jar():
-    global _sc, _spark
-    if 'SPARK_HOME' in os.environ:
-        if not os.path.isfile(
-                os.path.join(os.environ['SPARK_HOME'],'jars/spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar')):
-            copyfile(_get_scimple_data_path('spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar'),
-                     os.path.join(os.environ['SPARK_HOME'], 'jars/spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar'))
-
-_export_pyspark_kafka_jar()
+if 'SPARK_HOME' in os.environ:
+    if not os.path.isfile(
+            os.path.join(os.environ['SPARK_HOME'],'jars/spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar')):
+        copyfile(get_scimple_data_path('spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar'),
+                 os.path.join(os.environ['SPARK_HOME'], 'jars/spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar'))
 
 if 'KAFKA_HOME' not in os.environ:
-    os.environ['KAFKA_HOME'] = _get_scimple_data_path('kafka')
+    os.environ['KAFKA_HOME'] = get_scimple_data_path('kafka')
 
 
 """
@@ -62,9 +53,9 @@ def create_dstream(topic):
     :return: dstream
     """
     if 'KAFKA_HOME' not in os.environ:
-        os.environ['KAFKA_HOME'] = _get_scimple_data_path('kafka')
+        os.environ['KAFKA_HOME'] = get_scimple_data_path('kafka')
     global is_running, home_, topics, zoo, kafka, time_, window_, window_scc, scc, dstream, is_running_scc
-    sc, _ = sc_sqlc()  # also used to check pyspark avaibilty
+    sc, _ = pyspark_contexts()  # also used to check pyspark avaibilty
     if not scc:
         from pyspark.streaming import StreamingContext
         scc = StreamingContext(sc, window_scc)
@@ -194,4 +185,4 @@ def stop_listening():
     is_running_scc = False
     print("StreamingContext closed")
     from pyspark.streaming import StreamingContext
-    scc = StreamingContext(sc_sqlc()[0], window_scc)
+    scc = StreamingContext(pyspark_contexts()[0], window_scc)
