@@ -2,11 +2,11 @@ from setuptools import setup
 
 setup(
     name='scimple',
-    version='1.10.3',
-    py_modules=['scimple'],
+    version='1.10.4',
+    #py_modules=['scimple'],
     install_requires=['matplotlib', 'numpy', 'pandas', 'pyspark', 'pyarrow'],
-    packages=['scimple_data'],
-    package_data={'scimple_data': ['*']},
+    packages=['scimple/scimple_data', 'scimple'],
+    package_data={'scimple/scimple_data': ['*']},
     url='http://github.com/EnzoBnl/Scimple',
     license='',  # MIT
     author='Enzo Bonnal',

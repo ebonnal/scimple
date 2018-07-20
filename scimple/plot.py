@@ -67,7 +67,7 @@ except:
     pass
 
 
-def sc_spark():
+def sc_sqlc():
     """
 
     :return: (SparkContext, SQLContext)
@@ -76,179 +76,11 @@ def sc_spark():
         import pyspark
         from pyspark.sql import SparkSession
         sc = pyspark.SparkContext.getOrCreate()
-        spark = pyspark.SQLContext.getOrCreate(sc)
-        spark.setConf("spark.sql.execution.arrow.enabled", "true")
-        return sc, spark
+        sqlc = pyspark.SQLContext.getOrCreate(sc)
+        sqlc.setConf("sqlc.sql.execution.arrow.enabled", "true")
+        return sc, sqlc
     except:
         raise Warning('pyspark not available')
-
-# #####
-# KAFKA
-# #####
-
-
-def _export_pyspark_kafka_jar():
-    global _sc, _spark
-    if 'SPARK_HOME' in os.environ:
-        if not os.path.isfile(
-                os.path.join(os.environ['SPARK_HOME'],'jars/spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar')):
-            copyfile(_get_scimple_data_path('spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar'),
-                     os.path.join(os.environ['SPARK_HOME'], 'jars/spark-streaming-kafka-0-8-assembly_2.11-2.3.0.jar'))
-
-_export_pyspark_kafka_jar()
-
-if 'KAFKA_HOME' not in os.environ:
-    os.environ['KAFKA_HOME'] = _get_scimple_data_path('kafka')
-
-
-class Kafka:
-    """
-    kafka tools for windows
-    KAFKA_HOME can be set (overwritten by explicit
-    """
-    is_running = False
-    home = os.environ['KAFKA_HOME']
-    topics = dict()
-    zoo = None
-    kafka = None
-    time = None
-    window = 5
-    window_scc = 4
-    scc = None
-    dstream = None
-    is_running_scc = False
-
-    @staticmethod
-    def set_listening_window(window):
-        """
-        :param window: listening window in seconds
-        :return:
-        """
-        Kafka.window_scc = window
-
-    @staticmethod
-    def create_dstream(topic):
-        """
-        create e sparkstreamingcontext linked to a subject and a dstream
-        :param topic:  str
-        :param window: int seconds for scc buffer window
-        :return: dstream
-        """
-        sc, _ = sc_spark()  # also used to check pyspark avaibilty
-        if not Kafka.scc:
-            from pyspark.streaming import StreamingContext
-            Kafka.scc = StreamingContext(sc, Kafka.window_scc)
-        from pyspark.streaming.kafka import KafkaUtils
-        Kafka.dstream = KafkaUtils.createStream(Kafka.scc, 'localhost:2181', 'sparkit', {topic: 1})
-        return Kafka.dstream
-
-    @staticmethod
-    def start_server(home=None, window=5):
-        """
-        :param window : window in seconds
-        :param home: path to kafka home directory
-        :return: None
-        """
-        if Kafka.is_running:
-            raise Warning('Kafka is already running')
-        else:
-            Kafka.window = window
-            if home:
-                Kafka.home = home
-            if not Kafka.home:
-                raise ValueError('please set KAFKA_HOME or provide it as start method argument')
-            print([Kafka.home + '/bin/windows/zookeeper-server-start.bat',
-                               Kafka.home + '/config/zookeeper.properties'])
-            Kafka.zoo = Popen([Kafka.home + '/bin/windows/zookeeper-server-start.bat',
-                               Kafka.home + '/config/zookeeper.properties'],
-                              universal_newlines=True)
-            time.sleep(3)
-            kafka_well_started = False
-            while not kafka_well_started:
-                try:
-                    Kafka.kafka = Popen([Kafka.home + '/bin/windows/kafka-server-start.bat',
-                                         Kafka.home + '/config/server.properties'],
-                                        universal_newlines=True)
-                    Kafka.kafka.wait(20)
-                    Popen([Kafka.home + '/bin/windows/kafka-server-stop.bat',
-                           Kafka.home + '/config/server.properties']).wait()
-                except TimeoutExpired:
-                    kafka_well_started = True
-                # if Kafka.kafka.poll() is None:  # process en cours bien lancé
-
-            Kafka.is_running = True
-            Kafka.time = time.time()
-
-    @staticmethod
-    def start_listening():
-        if Kafka.scc:
-            Kafka.scc.start()
-            Kafka.is_running_scc = True
-        else:
-            raise RuntimeError('no dstreams registered')
-
-    @staticmethod
-    def talk(topic, message):
-        """
-        :param message : str
-        :param topic: str : existing topic
-        :return: None
-        """
-        if not Kafka.is_running:
-            raise ValueError('Kafka is not running yet')
-        if topic not in Kafka.topics:
-            Kafka.topics[topic] = [message]
-        else:
-            Kafka.topics[topic].append(message)
-        if time.time() - Kafka.time > Kafka.window:
-            Kafka.time = time.time()
-            Kafka.flush()
-
-    @staticmethod
-    def flush():
-        """
-        Throw talked messages
-        :return:
-        """
-        if not Kafka.is_running:
-            raise ValueError('Kafka is not running yet')
-        for topic in Kafka.topics:
-            p = Popen([Kafka.home + '/bin/windows/kafka-console-producer.bat',
-                       '--broker-list', 'localhost:9092',
-                       '--topic', topic], stdin=PIPE, shell=True, universal_newlines=True)
-            # '--property', '"parse.key=true"', '--property', '"key.separator=:"',
-            p.communicate(input='\n'.join(Kafka.topics[topic]))
-        Kafka.topics = dict()
-
-    @staticmethod
-    def stop_server():
-        if Kafka.is_running:
-            Kafka.flush()
-        Popen([Kafka.home + '/bin/windows/kafka-server-stop.bat',
-               Kafka.home + '/config/server.properties']).wait()
-        Popen([Kafka.home + '/bin/windows/zookeeper-server-stop.bat',
-               Kafka.home + '/config/zookeeper.properties']).wait()
-        if Kafka.zoo:
-            Kafka.zoo.kill()
-        if Kafka.kafka:
-            Kafka.kafka.kill()
-        for topic_producer in Kafka.topics.values():
-            topic_producer.kill()
-        Kafka.is_running = False
-
-    @staticmethod
-    def stop_listening():
-        """
-        After that you need to reregister dstreams !! Bug if restarting without dstreams
-        :return:
-        """
-        if not Kafka.is_running_scc:
-            raise RuntimeError('not listening')
-        Kafka.scc.stop(stopSparkContext=False)
-        Kafka.scc.awaitTermination()
-        Kafka.is_running_scc = False
-        from pyspark.streaming import StreamingContext
-        Kafka.scc = StreamingContext(sc_spark()[0], Kafka.window_scc)
 
 
 
@@ -1344,6 +1176,17 @@ def array_to_img(array, name=None):
 
 if __name__ == '__main__':
     pass
+    Kafka.start_server(window=5)
+    dstream = Kafka.create_dstream('source_lines')
+    rdd_buff = list()
+    dstream.foreachRDD(lambda rdd: rdd_buff.append(rdd.collect()))
+    Kafka.start_listening()
+    import time
+
+    for line in open('plot.py', 'r').read().split('\n'):
+        Kafka.talk('source_lines', line)
+    Kafka.stop_listening()
+    Kafka.stop_server()
     # from pyspark.streaming import StreamingContext
     # from pyspark import SparkContext
     # Kafka.create_dstream('e').foreachRDD(lambda rdd:rdd)
