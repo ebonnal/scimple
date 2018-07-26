@@ -1,6 +1,6 @@
 # Scimple package
 # Author: Enzo Bonnal (enzobonnal@gmail.com)
-__version__ = '1.10.5'
+__version__ = '1.10.6'
 print('using scimple', __version__)
 
 

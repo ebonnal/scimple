@@ -16,8 +16,10 @@ FuncType = type(lambda x: None)
 NoneType = type(None)
 inf = float('inf')
 
-default = '33D2FADAA127E688CAC8E65296799750655CDA920FCE4A6E84EFEAB2262128E3'  # 'None' 10 times sha-256ed
+class Default:
+    pass
 
+default = Default()
 
 def is_default(value):
     return value == default
@@ -53,16 +55,8 @@ def is_2d_array_like_not_empty(array):
     :param array: potential 2d array
     :return: bool
     """
-    not_empty = False
-    try:
-        if len(array) == 0:
-            return False
-        for line in array:
-            for _ in line:
-                not_empty = True
-    except TypeError:
-        return False
-    return not_empty
+    shape = np.shape(array)
+    return len(shape) == 2 and shape[0] != 0 and shape[1] != 0
 
 
 def derivate(f, a, d=10 ** -8, left=False):
