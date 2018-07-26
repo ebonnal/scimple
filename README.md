@@ -1,6 +1,6 @@
 # Scimple Lib
 
-#####Kafka & Spark & Stat & Plot your data scimply
+##### Kafka & Spark & Stat & Plot your data scimply
 
 github.com/EnzoBnl/Scimple
 
