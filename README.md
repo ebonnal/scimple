@@ -4,7 +4,6 @@
 
 github.com/EnzoBnl/Scimple
 
-Enzo Bonnal
 enzobonnal@gmail.com
 
 TEST:
