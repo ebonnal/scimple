@@ -1,6 +1,6 @@
-# Scimple Lib
+# Scimple Package
 
-##### Tools scimplifying Apache Kafka, Apache Spark, matplotlib
+##### Data Science Simple : Tools scimplifying Matplotlib, Apache Kafka, Apache PySpark
 
 github.com/EnzoBnl/Scimple
 
@@ -34,5 +34,5 @@ kafka.talk(topic="about_cats", message="cats_are_cute")
 
 Create a PySpark Streaming dstream listening on a Kafka topic as scimply as : 
 ```
-dstream = kafka.create_dstream("about_cats")
+dstream = kafka.create_dstream(topic="about_cats")
 ```
