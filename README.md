@@ -28,8 +28,8 @@ dstream = kafka.create_dstream(topic="about_cats")
 
 Some outputs from the notebook:
 
-![](https://github.com/EnzoBnl/Scimple/edit/master/screens/1.png)
+![](https://github.com/EnzoBnl/Scimple/blob/master/screens/1.png)
 
-![](https://github.com/EnzoBnl/Scimple/edit/master/screens/2.png)
+![](https://github.com/EnzoBnl/Scimple/blob/master/screens/2.png)
 
-![](https://github.com/EnzoBnl/Scimple/edit/master/screens/3.png)
+![](https://github.com/EnzoBnl/Scimple/blob/master/screens/3.png)
