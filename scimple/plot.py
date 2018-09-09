@@ -699,7 +699,8 @@ class Plot:
             self._ax.legend(loc='upper right', shadow=True, facecolor=self._ax.get_facecolor()).draggable()
         if len(marker) != 1:
             for tick in self._ax.get_xticklabels():
-                tick.set_rotation(90)
+                if 'dont_rotate_bar_names' not in self._magic:
+                    tick.set_rotation(90)
             self._fig.tight_layout()
         return self
 

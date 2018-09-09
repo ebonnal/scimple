@@ -1,20 +1,36 @@
-# Scimple Lib
 
-#####Kafka & Spark & Stat & Plot your data scimply
+# Scimple
+Data Science Simple : Tools scimplifying Matplotlib, Apache Kafka, Apache PySpark
+## Goal
+Gain time on repetitive things
+## Features
+```
+from scimple import kafka, Plot
+```
+Plot square function as scimply as : 
+`Plot().add(x=range(-10, 10), y=lambda i, x: x[i]**2)`
 
-github.com/EnzoBnl/Scimple
+Start a kafka server and talk on it as scimply as : 
+```
+kafka.start_server()
+kafka.talk(topic="about_cats", message="cats_are_cute")
+```
 
-Enzo Bonnal
-enzobonnal@gmail.com
+Create a PySpark Streaming dstream listening on a Kafka topic as scimply as : 
+```
+dstream = kafka.create_dstream(topic="about_cats")
+```
+## Test it:
 
-TEST:
+1. run  `pip install scimple` 
+2. Run your favorite *notebook* 
+3. Test `./notebook_example.ipynb`
 
-Test package by running: 
-`pip install scimple`
 
-or:
-`git clone https://github.com/EnzoBnl/Scimple`
-and
-`pip install .`
 
-Then run the test notebook
+
+
+
+
+
+
