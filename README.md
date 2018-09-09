@@ -1,6 +1,6 @@
 
 # Scimple
-Data Science Simple : Tools scimplifying Matplotlib, Apache Kafka, Apache PySpark
+Tools scimplifying Matplotlib, Apache Kafka, Apache PySpark
 ## Goal
 Gain time on repetitive things
 ## Features
