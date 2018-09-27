@@ -193,19 +193,11 @@ class Plot:
             return self._fig
         else:
             self._matplotlib_axe_callable_name = name
-            return self.wrapper_func
+            return self._wrapper_func
 
-    def wrapper_func(self, *args, **kwargs):
+    def _wrapper_func(self, *args, **kwargs):
         self.axe.__getattribute__(self._matplotlib_axe_callable_name)(*args, **kwargs)
         return self
-
-    # def boxplot(self, *args, **kwargs):
-    #     self.axe.boxplot(*args, **kwargs)
-    #     return self
-    #
-    # def hist(self, *args, **kwargs):
-    #     self.axe.hist(*args, **kwargs)
-    #     return self
 
     def save(self, name):
         """
