@@ -69,12 +69,14 @@ def mult_array_mapped(a, f):
     return res
 
 
-def random_color_well_dispatched(n):
+def random_color_well_dispatched(n, random_seed=None):
     """
-
+    :param random_seed: int
     :param n: number of color code well dispatched needed
     :return: list of n color codes well dispatched
     """
+    if random_seed is not None:
+        random.seed(random_seed)
     pas = [1, 1, 1]
     while mult_array_mapped(pas, lambda x: x + 1) < n + 2 + (
             0 if pas[0] != pas[1] or pas[0] != pas[2] else pas[0] - 1):
