@@ -135,7 +135,7 @@ class Plot:
     _cm_function_str = 'function_str'
 
 
-    def __init__(self, dim=2, title=None, xlabel=None, ylabel=None, zlabel=None, borders=None, bg_color=None):
+    def __init__(self, dim=2, title=None, xlabel=None, ylabel=None, zlabel=None, borders=None, bg_color=None, colors_pool_size=20):
         """
 
         :param dim: 2 or 3
@@ -145,7 +145,11 @@ class Plot:
         :param zlabel: str, do not set if dim is not 3 !
         :param borders: Collection of int of length dim*2, settings axes limits
         :param bg_color: a valid color code str
+        :param colors_pool_size: int
         """
+        self._plot_count = 0
+        self._colors_pool_size = colors_pool_size
+        self._colors_pool = [pastelize(color) for color in random_color_well_dispatched(self._colors_pool_size, 0)]
         self._magic = set()
         self._at_least_one_label_defined = False
         self._color_bar_nb = 0
@@ -288,7 +292,7 @@ class Plot:
         return None
 
     def add(self, table=None, x=None, y=None, z=None, first_line=0, last_line=None,
-            label=default, colored_by=None, marker='.', markersize=None):
+            label=default, colored_by=None, marker='.', markersize=None, colored_area=default):
         """
 
         :param table:
@@ -329,6 +333,9 @@ class Plot:
                 function int : index, tuple : xyz_tuple ->floatable value (1,1.2,'15'...)
                 function int : index, tuple : xyz_tuple ->color_code
                 function int : index, tuple : xyz_tuple ->str_class (not floatable)
+        :param colored_area:
+            default
+            float in [0, 1] representing the transparency of the surface colored. Only for 2D plots
         :param marker:
             str : single character (matplotlib marker) or 'bar' to call plt.bar (bar plot)
         :param markersize:
@@ -468,6 +475,8 @@ class Plot:
                 x_plot = x
         else:
             raise Exception("should never happen 48648648")
+        if None in x_plot:  # remove None values for
+            x_plot = list(map(lambda e: e if e is not None else "None", x_plot))
         x_y_z_collections_len = len(x_plot)
         if y_type in {int, str}:
             if y_type is str:
@@ -485,7 +494,8 @@ class Plot:
             y_plot = [y(i, x_plot) for i in range(x_y_z_collections_len)]
         else:
             raise Exception("should never happen 86789455")
-
+        if None in y_plot:  # remove None values for
+            y_plot = list(map(lambda e: e if e is not None else "None", y_plot))
         if z_type is NoneType:
             pass
         elif z_type in {int, str}:
@@ -505,6 +515,8 @@ class Plot:
             z_plot = [z(i, x_plot, y_plot) for i in range(x_y_z_collections_len)]
         else:
             raise Exception("should never happen 78941153")
+        if z_plot is not None and None in z_plot:  # remove None values for
+            z_plot = list(map(lambda e: e if e is not None else "None", z_plot))
 
         if x_plot is None or y_plot is None:
             raise Exception("should never happen 448789")
@@ -515,7 +527,13 @@ class Plot:
             to_plot = (x_plot, y_plot, z_plot)
         else:  # 2D
             to_plot = (x_plot, y_plot)
-
+        # colored_area
+        type_value_checks(colored_area, good_types=(Default, float, int),
+                          type_message="colored_area type must be float",
+                          good_values=lambda colored_area: is_default(colored_area) or (self._dim ==2 and marker != "bar" and (is_default(colored_area) or 0 <= colored_area <= 1)),
+                          value_message="colored_area value must be in interval [0, 1]" if self._dim == 2 and marker != "bar" else
+                          "colored_area cannot be set if plot dimension != 2" if self._dim != 2 else
+                          "colored_area cannot be set if plot marker is 'bar'")
         # colored_by:
         color_mode = self._coloring_mode(colored_by, 0, [[to_plot[i][0]] for i in range(len(to_plot))])
 
@@ -554,8 +572,11 @@ class Plot:
             if type(label) is str and len(label) != 0:  # label != from None and ""
                 kwargs_plot['label'] = label
                 self._at_least_one_label_defined = True
+            kwargs_plot['color'] = self._colors_pool.pop()
             self._ax.plot(*(*to_plot, marker), **kwargs_plot) if len(marker) == 1 \
                 else self._ax.bar(*to_plot, **kwargs_plot)
+            if not is_default(colored_area):
+                self._ax.fill_between(to_plot[0], 0, to_plot[1], alpha=colored_area, color=kwargs_plot['color'])
         elif color_mode == Plot._cm_color_code:
             if type(label) is str and len(label) != 0:  # label != from None and ""
                 kwargs_plot['label'] = label
@@ -566,6 +587,8 @@ class Plot:
             kwargs_plot['color'] = colored_by
             self._ax.plot(*(*to_plot, marker), **kwargs_plot) if len(marker) == 1 \
                 else self._ax.bar(*to_plot, **kwargs_plot)
+            if not is_default(colored_area):
+                self._ax.fill_between(to_plot[0], 0, to_plot[1], alpha=colored_area, color=kwargs_plot['color'])
         elif color_mode in [Plot._cm_column_index, Plot._cm_function_str,
                             Plot._cm_function_float, Plot._cm_function_color_code]:
             xyz = (x_plot, y_plot, z_plot) if self._dim == 3 else (x_plot, y_plot)
@@ -597,11 +620,14 @@ class Plot:
                         to_plot = (x_group, y_group, z_group)
                     if label is not None:
                         kwargs_plot['label'] = group if is_default(label) or str(group) not in label else label[str(group)]
+                    color = pastelize(colors_list.pop())
                     self._ax.plot(*(*to_plot, marker),
                                    **{**kwargs_plot,
-                                      'color': pastelize(colors_list.pop())}) if len(marker) == 1 \
+                                      'color': color}) if len(marker) == 1 \
                         else self._ax.bar(*to_plot, **{**kwargs_plot,
-                                                        'color': pastelize(colors_list.pop())})
+                                                        'color': color})
+                    if not is_default(colored_area):
+                        self._ax.fill_between(to_plot[0], 0, to_plot[1], alpha=colored_area, color=color)
 
             elif color_mode == Plot._cm_function_color_code:
                 if type(label) is str and len(label) != 0:  # label != from None and ""
@@ -634,6 +660,9 @@ class Plot:
                                        **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"}) if len(marker) == 1 \
                             else self._ax.bar(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
                                                **{**kwargs_plot, 'color': color})
+                        if not is_default(colored_area):
+                            self._ax.fill_between(dict_color_to_lines[color][0], 0, dict_color_to_lines[color][1],
+                                                  alpha=colored_area, color=color)
                     elif self._dim == 3:
                         self._ax.plot(
                             *(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
@@ -681,6 +710,9 @@ class Plot:
                                        **{**kwargs_plot, 'color': color, 'solid_capstyle': "round"}) if len(marker) == 1 \
                             else self._ax.bar(dict_color_to_lines[color][0], dict_color_to_lines[color][1],
                                                **{**kwargs_plot, 'color': color})
+                        if not is_default(colored_area):
+                            self._ax.fill_between(dict_color_to_lines[color][0], 0, dict_color_to_lines[color][1],
+                                                  alpha=colored_area, color=color)
                 elif self._dim == 3:
                     for color in dict_color_to_lines:
                         self._ax.plot(
@@ -691,13 +723,12 @@ class Plot:
         if self._at_least_one_label_defined:
             pass
             self._ax.legend(loc='upper right', shadow=True, facecolor=self._ax.get_facecolor()).draggable()
-        if len(marker) != 1:
+        if len(marker) != 1 or type(to_plot[0][0]) is str:
             for tick in self._ax.get_xticklabels():
                 if 'dont_rotate_bar_names' not in self._magic:
                     tick.set_rotation(90)
             self._fig.tight_layout()
         return self
-
 
 def show(block=True):
     plt.show(block=block)

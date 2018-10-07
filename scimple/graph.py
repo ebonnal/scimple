@@ -146,15 +146,15 @@ class Graph(nx.DiGraph):
                                      node_size=nodes_size,
                                      label_pos=0.25 if self._isdirected else 0.5)
 
-def dijkstra(G, start, target):
+def dijkstra(g, start, target):
     """
     :param start: node name
     :param target: node name
-    :param G: scimple.graph.Graph: non directed, with nodes labels at 0 and edges with cost
+    :param g: scimple.graph.Graph: non directed, with nodes labels at 0 and edges with cost
     :return: pair tuple: (list of nodes name for shortest path, Graph with colorized path)
     """
     curr_node = start
     nearest_node = start
-    nearest_node_dist = 7
-    for next_node in G.neigh(start):
-        pass
+    for next_node in g.neigh(start):
+        next_dist = g.get_node_label(curr_node) + g.get_edge_label((curr_node, next_node))
+        g.change_node_label(next_node, next_dist)

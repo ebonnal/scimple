@@ -5,7 +5,7 @@ import time
 from collections import Collection, Iterable
 import numpy as np
 import re
-
+from IPython.display import display, Markdown, Latex
 
 
 # #####
@@ -253,3 +253,23 @@ def load_csv(path, delimiter=r'\n', sep=','):
     f.close()
     return [[try_apply(elem, [int, float]) for elem in re.split(sep, line)] for line in
             re.split(delimiter, as_string)]
+
+# #######
+# DISPLAY
+# #######
+
+def print_markdown(string):
+    """
+    Display Markdown in ipynb
+    :param string: str
+    :return: None
+    """
+    display(Markdown(string))
+
+def print_latex(string):
+    """
+    Display Latex in ipynb
+    :param string: str
+    :return: None
+    """
+    display(Latex(string))

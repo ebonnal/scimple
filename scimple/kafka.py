@@ -1,6 +1,6 @@
 from shutil import copyfile
 from subprocess import Popen, PIPE, TimeoutExpired
-from .pyspark import pyspark_contexts
+from .pyspark_utils import contexts
 from .utils import *
 
 
@@ -55,7 +55,7 @@ def create_dstream(topic):
     if 'KAFKA_HOME' not in os.environ:
         os.environ['KAFKA_HOME'] = get_scimple_data_path('kafka')
     global is_running, home_, topics, zoo, kafka, time_, window_, window_scc, scc, dstream, is_running_scc
-    sc, _ = pyspark_contexts()  # also used to check pyspark avaibilty
+    sc, _ = contexts()  # also used to check pyspark avaibilty
     if not scc:
         from pyspark.streaming import StreamingContext
         scc = StreamingContext(sc, window_scc)
@@ -185,4 +185,4 @@ def stop_listening():
     is_running_scc = False
     print("StreamingContext closed")
     from pyspark.streaming import StreamingContext
-    scc = StreamingContext(pyspark_contexts()[0], window_scc)
+    scc = StreamingContext(contexts()[0], window_scc)
