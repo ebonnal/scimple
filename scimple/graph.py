@@ -5,7 +5,8 @@ import networkx as nx
 from copy import copy
 import matplotlib.pyplot as plt
 from .plot import Plot, random_color_well_dispatched, pastelize
-from .utils import flatten_n_times
+from .utils import flatten_n_times, default, is_default
+
 
 # #####
 # GRAPH
@@ -86,7 +87,7 @@ class Graph(nx.DiGraph):
             self._edges_labels[(node2, node1)] = label
         super().add_edge(node1, node2)
 
-    def plot(self, nodes_size=400, font_size_nodes=7, font_size_edges=6, colored_by=None, random_seed=None):
+    def plot(self, nodes_size=400, font_size_nodes=7, font_size_edges=6, colored_by=None, random_seed=None, layout=default):
         """
 
         :param nodes_size: int
@@ -97,12 +98,15 @@ class Graph(nx.DiGraph):
             dict: list of lists of nodes names: example: for A,B,C,D,E nodes, colored_by=[["A", "B"], ["C", "D"]] will
                   creates 3 groups: A&B, C&D and E (not mandatory to mention all nodes, a group for non mentioned nodes
                   is created
-        :return:
+        :param layout: str: one of the networkx supported layouts
+            default: "spring_layout"
+        :return: None
         """
         # New colors, Plot axe and pos each time
         axe = Plot(dim=2, title=self.title).axe
         axe.axis('off')
-        pos = nx.spring_layout(self, scale=2)
+        pos = nx.spring_layout(self, scale=2) if is_default(layout) else eval(f"nx.{layout}(self, scale=2)")
+
         # DRAW NODES
         if colored_by is not None:
             colored_by_dict = {i: colored_by[i] for i in range(len(colored_by))}
@@ -144,7 +148,7 @@ class Graph(nx.DiGraph):
                                      font_size=font_size_edges,
                                      font_size_nodes=0,
                                      node_size=nodes_size,
-                                     label_pos=0.25 if self._isdirected else 0.5)
+                                     label_pos=0.33 if self._isdirected else 0.5)
 
 def dijkstra(g, start, target):
     """

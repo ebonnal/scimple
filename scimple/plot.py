@@ -730,6 +730,29 @@ class Plot:
             self._fig.tight_layout()
         return self
 
+    def _force_aspect(self, aspect=1):
+        extent = (*self.axe.get_xlim(), *self.axe.get_ylim())
+        self._ax.set_aspect(abs((extent[1] - extent[0]) / (extent[3] - extent[2])) / aspect)
+
+    def save_as_svg(self, file_name, dir_name='./', aspect=default):
+        """
+
+        :param file_name: str: without extension
+        :param dir_name: str: directory in which fig will be saved
+        :param aspect: float
+        :return:
+        """
+        type_value_checks(aspect,
+                          good_types={Default, float},
+                          type_message="aspect must be float")
+        type_value_checks(file_name,
+                          good_types={str},
+                          type_message="file_name must be str",
+                          good_values=lambda file_name: '.' not in file_name,
+                          value_message="file_name cannot contain dot")
+        if not is_default(aspect):
+            self._force_aspect(aspect=aspect)
+        self._fig.savefig(os.path.join(dir_name, f"{file_name}.svg"), format="svg", bbox_inches="tight")
 def show(block=True):
     plt.show(block=block)
 

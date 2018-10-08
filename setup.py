@@ -11,5 +11,5 @@ setup(
     license='',  # MIT
     author='Enzo Bonnal',
     author_email='enzobonnal@gmail.com',
-    description='Plot your data scimply in 1 line'
+    description='Scimplify Ploting, Graph manipulation, Spark Streaming & Kafka and other tools'
 )
