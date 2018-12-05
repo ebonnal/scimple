@@ -292,7 +292,7 @@ class Plot:
         return None
 
     def add(self, table=None, x=None, y=None, z=None, first_line=0, last_line=None,
-            label=default, colored_by=None, marker='.', markersize=None, colored_area=default):
+            label=default, colored_by=None, marker='.', markersize=None, colored_area=default, **kwargs):
         """
 
         :param table:
@@ -340,6 +340,7 @@ class Plot:
             str : single character (matplotlib marker) or 'bar' to call plt.bar (bar plot)
         :param markersize:
             int : size of marker or alpha of color if bar plot
+        :param kwargs: matplotlib.pyplot.plot kwargs
         :return:
         """
         # first_line
@@ -356,7 +357,7 @@ class Plot:
                           value_message="last_line should be greater than or equal to first_line (default 0)")
         # variables:
         x_y_z_collections_len = last_line - first_line + 1 if last_line else None
-        kwargs_plot = {}
+        kwargs_plot = kwargs
         columns = []
         # table
         type_value_checks(table, good_values=lambda table: True if table is None else

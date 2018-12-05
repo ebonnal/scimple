@@ -1,5 +1,8 @@
 from shutil import copyfile
 from subprocess import Popen, PIPE, TimeoutExpired
+
+import sys
+
 from .pyspark_utils import contexts
 from .utils import *
 
@@ -82,6 +85,7 @@ def start_server(home=None, window=5):
             raise ValueError('please set KAFKA_HOME or provide it as start method argument')
         # print([home_ + '/bin/windows/zookeeper-server-start.bat',
         #        home_ + '/config/zookeeper.properties'])
+        print(home_, file=sys.stderr)
         zoo = Popen([home_ + '/bin/windows/zookeeper-server-start.bat',
                      home_ + '/config/zookeeper.properties'],
                           universal_newlines=True)

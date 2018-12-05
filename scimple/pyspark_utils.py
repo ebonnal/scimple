@@ -1,5 +1,8 @@
 import importlib
 import os
+
+from pyspark.sql.types import *
+
 from .utils import print_markdown, type_value_checks, default, is_default
 # #####
 # PYSPARK
@@ -47,6 +50,14 @@ def to_markdown(df_or_rdd, in_range=default):
         res += "\n|" + "|".join([f"`{row[col]}`" for col in columns]) + "|"
     return res
 
+def create_schema_from_list(fields):
+    """
+
+    :param fields: list of pairs of str: (name, type), example [("name", "StringType"), ("height", "FloatType")]
+    :return: schema
+    """
+    fields_list = list(map(lambda fieldName_fieldType : StructField(fieldName_fieldType[0], eval(f"{fieldName_fieldType[1]}()"), True), fields))
+    return StructType(fields_list)
 
 def show(df_or_rdd, in_range=default):
     """
