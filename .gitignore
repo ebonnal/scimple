@@ -1,6 +1,7 @@
-**.*/
+.idea/
 **build/
 **scimple.egg-info/
 **spark-warehouse/
 **__pycache__/
 **Untitled.ipynb
+**dist/
