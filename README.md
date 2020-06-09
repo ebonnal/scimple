@@ -1,6 +1,9 @@
 
 # Scimple
-Tools scimplifying Matplotlib, Apache Kafka, Apache PySpark
+[![Actions Status](https://github.com/enzobnl/scimple/workflows/PyPI/badge.svg)](https://github.com/enzobnl/scimple/actions)
+
+
+Utils scimplifying Matplotlib, Apache Kafka, Apache PySpark
 ## Goal
 Gain time on repetitive things
 ## Features
