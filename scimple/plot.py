@@ -723,7 +723,7 @@ class Plot:
             raise Exception("should never happen 4567884565")
         if self._at_least_one_label_defined:
             pass
-            self._ax.legend(loc='upper right', shadow=True, facecolor=self._ax.get_facecolor()).set_draggable()
+            self._ax.legend(loc='upper right', shadow=True, facecolor=self._ax.get_facecolor()).set_draggable(True)
         if len(marker) != 1 or type(to_plot[0][0]) is str:
             for tick in self._ax.get_xticklabels():
                 if 'dont_rotate_bar_names' not in self._magic:
