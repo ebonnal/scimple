@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='scimple',
-    version='1.11.0',
+    version='1.11.2',
     #py_modules=['scimple'],
     install_requires=['matplotlib', 'numpy', 'pandas', 'pyspark', 'pyarrow', 'networkx'],
     packages=['scimple/scimple_data', 'scimple'],
